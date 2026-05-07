@@ -1,0 +1,63 @@
+name: Storybook & Chromatic
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  storybook:
+    name: Build and Test Storybook
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        
+    - name: Get pnpm store directory
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+        echo "$STORE_PATH" >> $GITHUB_PATH
+        
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      
+    - name: Build Storybook
+      run: pnpm storybook:build
+      
+    - name: Upload Storybook build
+      uses: actions/upload-artifact@v4
+      with:
+        name: storybook-build
+        path: storybook-static/
+        retention-days: 7
+        
+    - name: Publish to Chromatic
+      if: github.event_name != 'pull_request'
+      uses: chromaui/action@v11
+      with:
+        projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+        buildScriptName: storybook:build
+        
+    - name: Chromatic PR Check
+      if: github.event_name == 'pull_request'
+      uses: chromaui/action@v11
+      with:
+        projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+        buildScriptName: storybook:build
+        onlyChanged: true
