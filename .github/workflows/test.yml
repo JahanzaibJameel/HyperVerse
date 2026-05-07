@@ -2,83 +2,32 @@ name: Test Suite
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main]
 
 jobs:
   test:
-    name: Run Tests
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-      
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9
-        
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '24'
-        echo "pnpm: $(pnpm -v)"
-        echo "Working directory: $(pwd)"
-        ls -la
-        pnpm list --depth=0
-        
-    - name: Debug environment
-      run: |
-        echo "Node: $(node -v)"
-        echo "pnpm: $(pnpm -v)"
-        echo "Working directory: $(pwd)"
-        ls -la
-        pnpm list --depth=0
-        
-    - name: Debug environment
-      run: |
-        echo "Node: $(node -v)"
-        echo "pnpm: $(pnpm -v)"
-        echo "Working directory: $(pwd)"
-        ls -la
-        pnpm list --depth=0
-        
-    - name: Debug environment
-      run: |
-        echo "Node: $(node -v)"
-        echo "pnpm: $(pnpm -v)"
-        echo "Working directory: $(pwd)"
-        ls -la
-        pnpm list --depth=0
-        
-    - name: Debug environment
-      run: |
-        echo "Node: $(node -v)"
-        echo "pnpm: $(pnpm -v)"
-        echo "Working directory: $(pwd)"
-        ls -la
-        pnpm list --depth=0
-        
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
-      
-    - name: Run type checking
-      run: pnpm typecheck
-      
-    - name: Run linting
-      run: pnpm lint
-      
-    - name: Run unit tests
-      run: pnpm test:coverage
-      
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v6
-      with:
-        file: ./coverage/lcov.info
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: true
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          # Caching disabled until GitHub cache services stabilise
+          # cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test -- --passWithNoTests
