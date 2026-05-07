@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
+
 import { XPBar } from '../XPBar';
+
 import React, { createContext, useContext } from 'react';
 
 // Mock context for stories

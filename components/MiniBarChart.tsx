@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+
 import { useColors } from "@/hooks/useColors";
 
 interface MiniBarChartProps {

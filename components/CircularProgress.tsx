@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
+
 import { useColors } from "@/hooks/useColors";
 
 interface CircularProgressProps {

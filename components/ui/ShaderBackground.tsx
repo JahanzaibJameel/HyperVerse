@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { Canvas, useSharedValue, useFrame, Skia, Shader, RoundedRect, vec } from '@shopify/react-native-skia';
+
 import { useThemeStore } from '@/lib/stores/themeStore';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');

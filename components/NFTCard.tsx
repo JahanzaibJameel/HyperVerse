@@ -3,6 +3,7 @@ import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from "re
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+
 import { useColors } from "@/hooks/useColors";
 
 interface NFTCardProps {

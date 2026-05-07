@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, FlatList, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+
 import { useAuthStore } from '@/lib/stores/authStore';
 import { useThemeStore } from '@/lib/stores/themeStore';
 import { GlowCard } from '@/components/GlowCard';
 import { NeonButton } from '@/components/NeonButton';
+import { SkeletonLoader, TaskCardSkeleton, StatsCardSkeleton } from '@/components/SkeletonLoader';
+import { DataErrorState } from '@/components/ErrorState';
+import { useColors } from '@/hooks/useColors';
 
 interface Task {
   id: string;
@@ -62,16 +66,150 @@ const mockTasks: Task[] = [
   },
 ];
 
+const EmptyState = ({ filter, router }: { filter: string; router: any }) => {
+  const colors = useColors();
+  
+  const getEmptyStateContent = () => {
+    switch (filter) {
+      case 'completed':
+        return {
+          icon: 'check-circle-outline',
+          title: 'No completed tasks',
+          description: 'Complete some tasks to see them here',
+        };
+      case 'in_progress':
+        return {
+          icon: 'progress-clock',
+          title: 'No tasks in progress',
+          description: 'Start working on a task to see it here',
+        };
+      case 'todo':
+        return {
+          icon: 'clipboard-outline',
+          title: 'No pending tasks',
+          description: 'All caught up! Add a new task to get started',
+        };
+      default:
+        return {
+          icon: 'clipboard-text-outline',
+          title: 'No tasks yet',
+          description: 'Create your first task to get started',
+        };
+    }
+  };
+
+  const { icon, title, description } = getEmptyStateContent();
+
+  return (
+    <View style={styles.emptyContainer}>
+      <GlowCard style={styles.emptyCard} glowColor={colors.cyan}>
+        <View style={styles.emptyContent}>
+          <MaterialCommunityIcons name={icon} size={64} color={colors.cyan} />
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{title}</Text>
+          <Text style={[styles.emptyDescription, { color: colors.mutedForeground }]}>
+            {description}
+          </Text>
+          <NeonButton
+            label="Create Task"
+            onPress={() => router.push('/tasks/new')}
+            size="md"
+          />
+        </View>
+      </GlowCard>
+    </View>
+  );
+};
+
 export default function TasksScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { themeMode, accentColor } = useThemeStore();
+  const colors = useColors();
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const [filter, setFilter] = useState<'all' | 'todo' | 'in_progress' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Simulate loading data
+  React.useEffect(() => {
+    const loadTasks = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Simulate occasional errors (10% chance)
+        if (Math.random() < 0.1) {
+          throw new Error('Failed to load tasks');
+        }
+        
+        // In a real app, this would fetch from your database
+        setIsLoading(false);
+      } catch (err) {
+        setError('Failed to load tasks. Please try again.');
+        setIsLoading(false);
+      }
+    };
+    
+    loadTasks();
+  }, []);
+
+  const handleRetry = () => {
+    const loadTasks = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setIsLoading(false);
+      } catch (err) {
+        setError('Failed to load tasks. Please try again.');
+        setIsLoading(false);
+      }
+    };
+    
+    loadTasks();
+  };
 
   if (!user) {
     return null;
+  }
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: themeMode === 'dark' ? '#0a0a0a' : '#f8f8f8' }]}>
+        <View style={styles.header}>
+          <SkeletonLoader width={120} height={28} />
+          <SkeletonLoader width={100} height={32} />
+        </View>
+        
+        <View style={styles.stats}>
+          <StatsCardSkeleton count={3} />
+        </View>
+
+        <View style={styles.filters}>
+          <SkeletonLoader width={80} height={32} />
+          <SkeletonLoader width={80} height={32} style={{ marginLeft: 8 }} />
+          <SkeletonLoader width={80} height={32} style={{ marginLeft: 8 }} />
+        </View>
+
+        <SkeletonLoader width="100%" height={48} style={{ marginBottom: 16 }} />
+        
+        <TaskCardSkeleton count={3} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: themeMode === 'dark' ? '#0a0a0a' : '#f8f8f8' }]}>
+        <DataErrorState onRetry={handleRetry} dataType="tasks" />
+      </View>
+    );
   }
 
   const isDark = themeMode === 'dark';
@@ -191,20 +329,39 @@ export default function TasksScreen() {
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#0a0a0a' : '#f8f8f8' }]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: isDark ? '#fff' : '#000' }]}>
+        <Text 
+          style={[styles.title, { color: isDark ? '#fff' : '#000' }]}
+          accessibilityRole="header"
+          accessibilityLabel="Tasks Screen"
+        >
           Tasks
         </Text>
         <NeonButton
-          title="Add Task"
+          label="Add Task"
           onPress={() => router.push('/tasks/new')}
-          size="small"
+          size="sm"
+          accessibilityLabel="Create new task"
+          accessibilityHint="Opens the task creation screen"
+          accessibilityRole="button"
         />
       </View>
 
       <View style={styles.stats}>
         <GlowCard style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: accentColorValue }]}>{taskStats.total}</Text>
-          <Text style={[styles.statLabel, { color: isDark ? '#888' : '#666' }]}>Total</Text>
+          <Text 
+            style={[styles.statNumber, { color: accentColorValue }]}
+            accessibilityRole="text"
+            accessibilityLabel={`Total tasks: ${taskStats.total}`}
+          >
+            {taskStats.total}
+          </Text>
+          <Text 
+            style={[styles.statLabel, { color: isDark ? '#888' : '#666' }]}
+            accessibilityRole="text"
+            accessibilityLabel="Total"
+          >
+            Total
+          </Text>
         </GlowCard>
         <GlowCard style={styles.statCard}>
           <Text style={[styles.statNumber, { color: '#00C851' }]}>{taskStats.completed}</Text>
@@ -254,8 +411,9 @@ export default function TasksScreen() {
         data={filteredTasks}
         renderItem={renderTask}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.taskList}
+        contentContainerStyle={filteredTasks.length === 0 ? styles.emptyList : styles.taskList}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={<EmptyState filter={filter} router={router} />}
       />
     </View>
   );
@@ -416,5 +574,35 @@ const styles = StyleSheet.create({
   },
   dueDateText: {
     fontSize: 12,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  emptyCard: {
+    width: '100%',
+    maxWidth: 320,
+    padding: 32,
+  },
+  emptyContent: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  emptyDescription: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  emptyList: {
+    flexGrow: 1,
   },
 });

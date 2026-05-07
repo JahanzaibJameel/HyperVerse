@@ -200,4 +200,5 @@ export const schema = appSchema([
         { name: 'updated_at', type: 'number' },
       ],
     },
-]);
+  ],
+});

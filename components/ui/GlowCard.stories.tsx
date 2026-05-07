@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View, Text } from 'react-native';
-import { useThemeStore } from '@/lib/stores/themeStore';
+
 import { GlowCard } from './GlowCard';
+
+import { useThemeStore } from '@/lib/stores/themeStore';
 
 const meta: Meta<typeof GlowCard> = {
   title: 'UI/GlowCard',

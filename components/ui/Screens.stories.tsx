@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import React from 'react';
+
 import { GlowCard } from '../GlowCard';
 import { CircularProgress } from '../CircularProgress';
 import { MiniBarChart } from '../MiniBarChart';
+
 import { ShaderBackground } from './ShaderBackground';
-import React from 'react';
 
 const meta: Meta<typeof View> = {
   title: 'UI/Screens',

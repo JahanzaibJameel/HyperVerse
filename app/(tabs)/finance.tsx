@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { GlowCard } from "@/components/GlowCard";
 import { StatBar } from "@/components/StatBar";
 import { MiniBarChart } from "@/components/MiniBarChart";

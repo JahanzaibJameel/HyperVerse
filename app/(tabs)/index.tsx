@@ -10,6 +10,17 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  FadeIn,
+  FadeInUp,
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
+
 import { GlowCard } from "@/components/GlowCard";
 import { StatBar } from "@/components/StatBar";
 import { XPBar } from "@/components/XPBar";
@@ -58,21 +69,25 @@ export default function DashboardScreen() {
 
       <View style={{ paddingHorizontal: 16 }}>
         {/* Header */}
-        <View style={[styles.header, { paddingTop: topPad + 16 }]}>
+        <Animated.View 
+          entering={FadeInDown.duration(600).delay(200)}
+          style={[styles.header, { paddingTop: topPad + 16 }]}
+        >
           <View>
             <Text style={[styles.greeting, { color: colors.mutedForeground }]}>GOOD MORNING</Text>
             <Text style={[styles.username, { color: colors.foreground }]}>{user.name}</Text>
           </View>
           <NotificationBadge />
-        </View>
+        </Animated.View>
 
         {/* Hero gradient card */}
-        <LinearGradient
-          colors={["#0d1a2e", "#0a1628", "#070e1c"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.heroCard, { borderColor: colors.cyan + "33" }]}
-        >
+        <Animated.View entering={FadeInUp.duration(800).delay(300)}>
+          <LinearGradient
+            colors={["#0d1a2e", "#0a1628", "#070e1c"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.heroCard, { borderColor: colors.cyan + "33" }]}
+          >
           {/* Glow effect top-right */}
           <View style={[styles.heroGlow, { backgroundColor: colors.cyan }]} />
           <View style={[styles.heroGlowPurple, { backgroundColor: colors.purple }]} />
@@ -99,9 +114,10 @@ export default function DashboardScreen() {
             <Text style={[styles.eventText, { color: ev.color }]} numberOfLines={1}>{ev.text}</Text>
           </View>
         </LinearGradient>
+        </Animated.View>
 
         {/* Quick stats grid */}
-        <View style={styles.statsGrid}>
+        <Animated.View entering={FadeInUp.duration(800).delay(400)} style={styles.statsGrid}>
           {[
             { icon: "shoe-sneaker" as const, val: health.steps.toLocaleString(), label: "STEPS", color: colors.green },
             { icon: "heart-pulse" as const, val: String(health.heartRate), label: "BPM", color: colors.pink },
@@ -114,10 +130,11 @@ export default function DashboardScreen() {
               <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
             </GlowCard>
           ))}
-        </View>
+        </Animated.View>
 
         {/* Health bar */}
-        <GlowCard glowColor={colors.green} style={styles.sectionCard}>
+        <Animated.View entering={FadeInUp.duration(800).delay(500)}>
+          <GlowCard glowColor={colors.green} style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="heart-pulse" size={16} color={colors.green} />
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>HEALTH</Text>
@@ -126,10 +143,12 @@ export default function DashboardScreen() {
           <StatBar label="Steps" value={health.steps} max={health.stepsGoal} color={colors.green} />
           <StatBar label="Calories" value={health.calories} max={2500} color={colors.orange} unit="kcal" />
           <StatBar label="Sleep quality" value={84} max={100} color={colors.cyan} unit="%" />
-        </GlowCard>
+          </GlowCard>
+        </Animated.View>
 
         {/* Finance summary */}
-        <GlowCard glowColor={colors.warning} style={styles.sectionCard}>
+        <Animated.View entering={FadeInUp.duration(800).delay(600)}>
+          <GlowCard glowColor={colors.warning} style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="chart-line" size={16} color={colors.warning} />
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>FINANCE</Text>
@@ -146,10 +165,12 @@ export default function DashboardScreen() {
               </View>
             ))}
           </View>
-        </GlowCard>
+          </GlowCard>
+        </Animated.View>
 
         {/* AI suggestions */}
-        <GlowCard glowColor={colors.purple} style={styles.sectionCard}>
+        <Animated.View entering={FadeInUp.duration(800).delay(700)}>
+          <GlowCard glowColor={colors.purple} style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="brain" size={16} color={colors.purple} />
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>AI INSIGHTS</Text>
@@ -162,15 +183,17 @@ export default function DashboardScreen() {
               <Text style={[styles.sugText, { color: colors.foreground }]}>{s.text}</Text>
             </View>
           ))}
-        </GlowCard>
+          </GlowCard>
+        </Animated.View>
 
         {/* AR city teaser */}
-        <LinearGradient
-          colors={["#0d1a2e", "#120828"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.arTeaser, { borderColor: colors.purple + "44" }]}
-        >
+        <Animated.View entering={FadeInUp.duration(800).delay(800)}>
+          <LinearGradient
+            colors={["#0d1a2e", "#120828"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.arTeaser, { borderColor: colors.purple + "44" }]}
+          >
           <View style={styles.arTeaserContent}>
             <MaterialCommunityIcons name="city-variant-outline" size={32} color={colors.purple} />
             <View style={{ flex: 1 }}>
@@ -188,6 +211,7 @@ export default function DashboardScreen() {
             ))}
           </View>
         </LinearGradient>
+        </Animated.View>
       </View>
     </ScrollView>
   );

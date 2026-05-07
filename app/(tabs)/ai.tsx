@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { GlowCard } from "@/components/GlowCard";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";

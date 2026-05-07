@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View } from 'react-native';
+
 import { CircularProgress } from '../CircularProgress';
 
 const meta: Meta<typeof CircularProgress> = {

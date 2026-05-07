@@ -3,6 +3,7 @@ import React, { useRef, useState } from "react";
 import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+
 import { useColors } from "@/hooks/useColors";
 
 interface IoTDeviceProps {

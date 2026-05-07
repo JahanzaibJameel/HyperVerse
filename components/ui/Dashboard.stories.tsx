@@ -1,11 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import React from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Animated } from 'react-native';
+
 import { GlowCard } from '../GlowCard';
 import { CircularProgress } from '../CircularProgress';
 import { XPBar } from '../XPBar';
 import { MiniBarChart } from '../MiniBarChart';
+
 import { ShaderBackground } from './ShaderBackground';
-import React from 'react';
 
 // Mock XPBar component for stories
 const MockXPBar = ({ user }: { user: any }) => {
@@ -342,5 +346,3 @@ const xpBarStyles = StyleSheet.create({
 });
 
 // Import necessary components
-import { LinearGradient } from 'expo-linear-gradient';
-import { Animated } from 'react-native';

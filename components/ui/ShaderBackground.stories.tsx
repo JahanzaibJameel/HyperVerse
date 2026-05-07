@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-native';
 import { View, Text } from 'react-native';
+
 import { ShaderBackground } from './ShaderBackground';
 
 const meta: Meta<typeof ShaderBackground> = {

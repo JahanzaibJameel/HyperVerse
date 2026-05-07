@@ -2,6 +2,7 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useRef } from "react";
 import { Animated, Platform, StyleProp, StyleSheet, Text, TouchableOpacity, ViewStyle } from "react-native";
+
 import { useColors } from "@/hooks/useColors";
 
 interface NeonButtonProps {
@@ -11,9 +12,24 @@ interface NeonButtonProps {
   style?: StyleProp<ViewStyle>;
   size?: "sm" | "md" | "lg";
   filled?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
+  accessibilityRole?: string;
+  disabled?: boolean;
 }
 
-export function NeonButton({ label, onPress, color, style, size = "md", filled = false }: NeonButtonProps) {
+export function NeonButton({ 
+  label, 
+  onPress, 
+  color, 
+  style, 
+  size = "md", 
+  filled = false,
+  accessibilityLabel,
+  accessibilityHint,
+  accessibilityRole = "button",
+  disabled = false
+}: NeonButtonProps) {
   const colors = useColors();
   const scale = useRef(new Animated.Value(1)).current;
   const glowColor = color || colors.cyan;
@@ -21,6 +37,7 @@ export function NeonButton({ label, onPress, color, style, size = "md", filled =
   const nativeDriven = Platform.OS !== "web";
 
   const handlePress = () => {
+    if (disabled) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Animated.sequence([
       Animated.timing(scale, { toValue: 0.94, duration: 80, useNativeDriver: nativeDriven }),
@@ -42,13 +59,21 @@ export function NeonButton({ label, onPress, color, style, size = "md", filled =
 
   return (
     <Animated.View style={[{ transform: nativeDriven ? [{ scale }] : [] }, style]}>
-      <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
+      <TouchableOpacity 
+        onPress={handlePress} 
+        activeOpacity={0.8}
+        disabled={disabled}
+        accessibilityLabel={accessibilityLabel || label}
+        accessibilityHint={accessibilityHint}
+        accessibilityRole={accessibilityRole}
+        accessibilityState={{ disabled }}
+      >
         {filled ? (
           <LinearGradient
             colors={[glowColor + "dd", glowColor + "99"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={[styles.button, padding, glowShadow, { borderColor: glowColor }]}
+            style={[styles.button, padding, glowShadow, { borderColor: glowColor, opacity: disabled ? 0.5 : 1 }]}
           >
             <Text style={[styles.label, { color: "#fff", fontSize }]}>{label}</Text>
           </LinearGradient>
@@ -58,7 +83,11 @@ export function NeonButton({ label, onPress, color, style, size = "md", filled =
               styles.button,
               padding,
               glowShadow,
-              { borderColor: glowColor, backgroundColor: glowColor + "15" },
+              { 
+                borderColor: glowColor, 
+                backgroundColor: glowColor + "15",
+                opacity: disabled ? 0.5 : 1
+              },
             ]}
           >
             <Text style={[styles.label, { color: glowColor, fontSize }]}>{label}</Text>

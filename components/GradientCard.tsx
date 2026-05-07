@@ -1,6 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { StyleSheet, ViewStyle } from "react-native";
+
 import { useColors } from "@/hooks/useColors";
 
 interface GradientCardProps {

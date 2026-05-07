@@ -1,6 +1,7 @@
 import { BlurView } from "expo-blur";
 import React from "react";
 import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+
 import { useColors } from "@/hooks/useColors";
 
 interface GlowCardProps {

@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { GlowCard } from "@/components/GlowCard";
 import { NFTCard } from "@/components/NFTCard";
 import { useApp } from "@/context/AppContext";

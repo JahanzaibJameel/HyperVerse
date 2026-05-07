@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { GlowCard } from "@/components/GlowCard";
 import { IoTDevice } from "@/components/IoTDevice";
 import { CircularProgress } from "@/components/CircularProgress";

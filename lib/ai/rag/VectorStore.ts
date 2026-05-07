@@ -1,6 +1,7 @@
 import { Database } from 'lancedb';
-import { ModelManager } from '../models/ModelManager';
 import * as FileSystem from 'expo-file-system';
+
+import { ModelManager } from '../models/ModelManager';
 
 export interface VectorDocument {
   id: string;

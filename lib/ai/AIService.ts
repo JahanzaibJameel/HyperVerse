@@ -1,6 +1,7 @@
+import { useAuthStore } from '../stores/authStore';
+
 import ModelManager, { AIModel } from './models/ModelManager';
 import VectorStore, { VectorDocument, SearchResult } from './rag/VectorStore';
-import { useAuthStore } from '../stores/authStore';
 
 export interface ChatMessage {
   id: string;
@@ -346,7 +347,7 @@ Guidelines:
     modelsUsed: string[];
   }> {
     let totalMessages = 0;
-    let totalResponseTime = 0;
+    const totalResponseTime = 0;
     let responseCount = 0;
     const modelsUsed = new Set<string>();
 
