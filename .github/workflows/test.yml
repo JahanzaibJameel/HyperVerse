@@ -26,19 +26,42 @@ jobs:
       uses: actions/setup-node@v6
       with:
         node-version: '24'
-        # cache: 'pnpm' # Temporarily disabled to isolate issue
+        echo "pnpm: $(pnpm -v)"
+        echo "Working directory: $(pwd)"
+        ls -la
+        pnpm list --depth=0
         
-    - name: Get pnpm store directory
-      shell: bash
+    - name: Debug environment
       run: |
-        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-        echo "$STORE_PATH" >> $GITHUB_PATH
+        echo "Node: $(node -v)"
+        echo "pnpm: $(pnpm -v)"
+        echo "Working directory: $(pwd)"
+        ls -la
+        pnpm list --depth=0
         
-    - name: Setup Expo CLI
-      uses: expo/expo-github-action@v8
-      with:
-        expo-version: latest
-        token: ${{ secrets.EXPO_TOKEN }}
+    - name: Debug environment
+      run: |
+        echo "Node: $(node -v)"
+        echo "pnpm: $(pnpm -v)"
+        echo "Working directory: $(pwd)"
+        ls -la
+        pnpm list --depth=0
+        
+    - name: Debug environment
+      run: |
+        echo "Node: $(node -v)"
+        echo "pnpm: $(pnpm -v)"
+        echo "Working directory: $(pwd)"
+        ls -la
+        pnpm list --depth=0
+        
+    - name: Debug environment
+      run: |
+        echo "Node: $(node -v)"
+        echo "pnpm: $(pnpm -v)"
+        echo "Working directory: $(pwd)"
+        ls -la
+        pnpm list --depth=0
         
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
