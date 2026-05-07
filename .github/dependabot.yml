@@ -15,9 +15,9 @@ updates:
     commit-message:
       prefix: "deps"
       include: "scope"
-    labels:
-      - "dependencies"
-      - "npm"
+    # labels:
+    #   - "dependencies"
+    #   - "npm"
     versioning-strategy: "increase-if-necessary"
 
   # Enable version updates for GitHub Actions
@@ -35,9 +35,9 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
-    labels:
-      - "dependencies"
-      - "github-actions"
+    # labels:
+    #   - "dependencies"
+    #   - "github-actions"
       
   # Enable version updates for Docker
   - package-ecosystem: "docker"
@@ -54,6 +54,6 @@ updates:
     commit-message:
       prefix: "docker"
       include: "scope"
-    labels:
-      - "dependencies"
-      - "docker"
+    # labels:
+    #   - "dependencies"
+    #   - "docker"
