@@ -114,19 +114,19 @@ jobs:
     
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: ios-build
         path: ./ios-build
         
     - name: Download Android artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: android-build
         path: ./android-build
         
     - name: Download Web artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: web-build
         path: ./web-build
