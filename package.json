@@ -14,6 +14,7 @@
     "test:coverage": "jest --coverage",
     "test:e2e": "detox test",
     "lint": "eslint . --ext .ts,.tsx --fix",
+    "bundle-report": "react-native-bundle-visualizer",
     "storybook": "echo 'Storybook not configured yet' || storybook start -p 6006",
     "build-storybook": "echo 'Storybook not configured yet' || storybook build -o storybook-static",
     "test-storybook": "echo 'Storybook not configured yet' || test-storybook --config-dir .storybook",
@@ -71,7 +72,10 @@
     "victory-native": "^41.6.0",
     "zod": "^3.25.76",
     "zod-validation-error": "^3.4.0",
-    "zustand": "^5.0.1"
+    "zustand": "^5.0.1",
+    "sentry-expo": "~7.5.0",
+    "expo-ssl-pinning": "~2.0.0",
+    "react-native-bundle-visualizer": "^3.1.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

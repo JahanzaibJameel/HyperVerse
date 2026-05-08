@@ -6,6 +6,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "allowSyntheticDefaultImports": true,
     "jsx": "react-jsx",
+    "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "allowJs": true,
