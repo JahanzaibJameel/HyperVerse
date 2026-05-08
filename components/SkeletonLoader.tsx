@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 
 import { useColors } from '@/hooks/useColors';
 
@@ -25,7 +25,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
         Animated.timing(shimmerValue, {
           toValue: 1,
           duration: animationDuration,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
         Animated.timing(shimmerValue, {
           toValue: 0,

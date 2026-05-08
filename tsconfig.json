@@ -3,7 +3,11 @@
     "baseUrl": ".",
     "strict": true,
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "allowSyntheticDefaultImports": true,
     "jsx": "react-jsx",
     "module": "esnext",
@@ -32,5 +36,6 @@
     "babel.config.js",
     "metro.config.js",
     "jest.config.js"
-  ]
+  ],
+  "extends": "expo/tsconfig.base"
 }

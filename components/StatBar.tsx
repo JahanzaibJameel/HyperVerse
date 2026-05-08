@@ -21,7 +21,7 @@ export function StatBar({ label, value, max, color, unit }: StatBarProps) {
     Animated.timing(progress, {
       toValue: pct,
       duration: 1000,
-      useNativeDriver: false,
+      useNativeDriver: Platform.OS !== "web",
     }).start();
   }, [pct]);
 

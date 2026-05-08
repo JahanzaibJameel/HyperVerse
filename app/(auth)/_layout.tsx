@@ -19,7 +19,6 @@ export default function AuthLayout() {
       }}
     >
       <Stack.Screen name="setup" options={{ headerShown: false }} />
-      <Stack.Screen name="unlock" options={{ headerShown: false }} />
     </Stack>
   );
 }

@@ -16,7 +16,7 @@ const NOTIFS = [
 export function NotificationBadge() {
   const colors = useColors();
   const [open, setOpen] = useState(false);
-  const [unread, setUnread] = useState(3);
+  const [unread, setUnread] = useState(5);
   const shake = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {

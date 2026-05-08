@@ -27,7 +27,7 @@ const MockXPBar = ({ user }: { user: any }) => {
     Animated.timing(progress, {
       toValue: pct,
       duration: 1000,
-      useNativeDriver: false,
+      useNativeDriver: Platform.OS !== "web",
     }).start();
   }, [pct]);
 

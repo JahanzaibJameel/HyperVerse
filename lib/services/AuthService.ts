@@ -1,8 +1,9 @@
 import * as Application from 'expo-application';
 import * as Crypto from 'expo-crypto';
-import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import Constants from 'expo-constants';
+import { safeGetItem, safeSetItem, safeDeleteItem } from '../storage';
+import * as SecureStore from 'expo-secure-store';
 
 export interface UserProfile {
   id: string;
@@ -31,7 +32,7 @@ export interface AuthState {
 export interface BiometricResult {
   success: boolean;
   error?: string;
-  biometryType?: LocalAuthentication.BiometryType;
+  biometryType?: any; // Using any for compatibility across platforms
 }
 
 class AuthService {
@@ -56,7 +57,7 @@ class AuthService {
   async getOrCreateDeviceId(): Promise<string> {
     try {
       // Try to get existing device ID from secure storage
-      const existingDeviceId = await SecureStore.getItemAsync(this.DEVICE_ID_KEY);
+      const existingDeviceId = await safeGetItem(this.DEVICE_ID_KEY);
       if (existingDeviceId) {
         return existingDeviceId;
       }
@@ -74,7 +75,7 @@ class AuthService {
       );
 
       // Store device ID securely
-      await SecureStore.setItemAsync(this.DEVICE_ID_KEY, deviceId);
+      await safeSetItem(this.DEVICE_ID_KEY, deviceId);
       
       return deviceId;
     } catch (error) {
@@ -118,7 +119,7 @@ class AuthService {
   async saveUserProfile(profile: UserProfile): Promise<void> {
     try {
       const profileJson = JSON.stringify(profile);
-      await SecureStore.setItemAsync(this.USER_PROFILE_KEY, profileJson);
+      await safeSetItem(this.USER_PROFILE_KEY, profileJson);
     } catch (error) {
       console.error('Error saving user profile:', error);
       throw new Error('Failed to save user profile');
@@ -130,7 +131,8 @@ class AuthService {
    */
   async loadUserProfile(): Promise<UserProfile | null> {
     try {
-      const profileJson = await SecureStore.getItemAsync(this.USER_PROFILE_KEY);
+      // Try to get existing user profile from secure storage
+      const profileJson = await safeGetItem(this.USER_PROFILE_KEY);
       if (!profileJson) return null;
 
       const profile = JSON.parse(profileJson) as UserProfile;
@@ -211,7 +213,7 @@ class AuthService {
       );
       
       if (authResult.success) {
-        await SecureStore.setItemAsync(this.BIOMETRIC_ENABLED_KEY, 'true');
+        await safeSetItem(this.BIOMETRIC_ENABLED_KEY, 'true');
         return true;
       }
 
@@ -227,7 +229,7 @@ class AuthService {
    */
   async disableBiometricAuth(): Promise<void> {
     try {
-      await SecureStore.deleteItemAsync(this.BIOMETRIC_ENABLED_KEY);
+      await safeDeleteItem(this.BIOMETRIC_ENABLED_KEY);
     } catch (error) {
       console.error('Error disabling biometric auth:', error);
     }
@@ -238,7 +240,7 @@ class AuthService {
    */
   async isBiometricAuthEnabled(): Promise<boolean> {
     try {
-      const enabled = await SecureStore.getItemAsync(this.BIOMETRIC_ENABLED_KEY);
+      const enabled = await safeGetItem(this.BIOMETRIC_ENABLED_KEY);
       return enabled === 'true';
     } catch (error) {
       console.error('Error checking biometric auth status:', error);
@@ -261,7 +263,7 @@ class AuthService {
       );
       
       if (authResult.success) {
-        await SecureStore.setItemAsync(this.APP_LOCK_ENABLED_KEY, 'true');
+        await safeSetItem(this.APP_LOCK_ENABLED_KEY, 'true');
         return true;
       }
 
@@ -277,7 +279,7 @@ class AuthService {
    */
   async disableAppLock(): Promise<void> {
     try {
-      await SecureStore.deleteItemAsync(this.APP_LOCK_ENABLED_KEY);
+      await safeDeleteItem(this.APP_LOCK_ENABLED_KEY);
     } catch (error) {
       console.error('Error disabling app lock:', error);
     }
@@ -288,7 +290,7 @@ class AuthService {
    */
   async isAppLockEnabled(): Promise<boolean> {
     try {
-      const enabled = await SecureStore.getItemAsync(this.APP_LOCK_ENABLED_KEY);
+      const enabled = await safeGetItem(this.APP_LOCK_ENABLED_KEY);
       return enabled === 'true';
     } catch (error) {
       console.error('Error checking app lock status:', error);
@@ -339,9 +341,9 @@ class AuthService {
    */
   async deleteProfile(): Promise<void> {
     try {
-      await SecureStore.deleteItemAsync(this.USER_PROFILE_KEY);
-      await SecureStore.deleteItemAsync(this.BIOMETRIC_ENABLED_KEY);
-      await SecureStore.deleteItemAsync(this.APP_LOCK_ENABLED_KEY);
+      await safeDeleteItem(this.USER_PROFILE_KEY);
+      await safeDeleteItem(this.BIOMETRIC_ENABLED_KEY);
+      await safeDeleteItem(this.APP_LOCK_ENABLED_KEY);
     } catch (error) {
       console.error('Error deleting user profile:', error);
       throw new Error('Failed to delete user profile');

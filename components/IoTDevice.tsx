@@ -26,7 +26,6 @@ export function IoTDevice({ name, icon, status, value, active: initialActive, co
     Animated.sequence([
       Animated.timing(scale, { toValue: 0.92, duration: 80, useNativeDriver: Platform.OS !== "web" }),
       Animated.timing(scale, { toValue: 1.04, duration: 80, useNativeDriver: Platform.OS !== "web" }),
-      Animated.timing(scale, { toValue: 1, duration: 80, useNativeDriver: Platform.OS !== "web" }),
     ]).start();
   };
 

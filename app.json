@@ -27,22 +27,7 @@
           "origin": "https://replit.com/"
         }
       ],
-      "expo-font",
-      "expo-web-browser",
-      [
-        "expo-ssl-pinning",
-        {
-          "domains": []
-        }
-      ],
-      [
-        "sentry-expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "hyperverse",
-          "organization": "hyperverse-team"
-        }
-      ]
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
