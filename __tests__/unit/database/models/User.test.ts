@@ -1,4 +1,19 @@
 // Mock User model for testing
+
+/**
+ * Wait until the wall clock has actually advanced past `timestamp`.
+ *
+ * `Date.now()` has millisecond resolution and timers are clamped, so a fixed
+ * `setTimeout(1)` does not guarantee the next read differs. Without this, the
+ * three "should update timestamp" tests fail intermittently depending on where
+ * the millisecond boundary falls.
+ */
+async function waitPast(timestamp: number): Promise<void> {
+  while (Date.now() <= timestamp) {
+    await new Promise(resolve => setTimeout(resolve, 1));
+  }
+}
+
 class MockUser {
   static table = 'users';
   
@@ -30,16 +45,15 @@ class MockUser {
   }
 
   async addXP(amount: number): Promise<void> {
-    const newXP = this.xp + amount;
+    let newXP = this.xp + amount;
     let newLevel = this.level;
     let newXPToNext = this.xpToNextLevel;
 
     // Level up logic
-    if (newXP >= this.xpToNextLevel) {
+    while (newXP >= newXPToNext) {
       newLevel += 1;
-      const overflowXP = newXP - this.xpToNextLevel;
-      newXPToNext = Math.floor(this.xpToNextLevel * 1.5); // Increase XP requirement
-      newXP = overflowXP;
+      newXP -= newXPToNext;
+      newXPToNext = Math.floor(newXPToNext * 1.5); // Increase XP requirement
     }
 
     this.xp = newXP;
@@ -168,10 +182,9 @@ describe('User Model', () => {
 
       it('should update timestamp', async () => {
         const originalUpdatedAt = user.updatedAt;
-        
-        // Small delay to ensure timestamp difference
-        await new Promise(resolve => setTimeout(resolve, 1));
-        
+
+        await waitPast(originalUpdatedAt);
+
         await user.addXP(50);
 
         expect(user.updatedAt).toBeGreaterThan(originalUpdatedAt);
@@ -213,9 +226,9 @@ describe('User Model', () => {
 
       it('should update timestamp', async () => {
         const originalUpdatedAt = user.updatedAt;
-        
-        await new Promise(resolve => setTimeout(resolve, 1));
-        
+
+        await waitPast(originalUpdatedAt);
+
         await user.updateStreak();
 
         expect(user.updatedAt).toBeGreaterThan(originalUpdatedAt);
@@ -275,9 +288,9 @@ describe('User Model', () => {
 
       it('should update timestamp', async () => {
         const originalUpdatedAt = user.updatedAt;
-        
-        await new Promise(resolve => setTimeout(resolve, 1));
-        
+
+        await waitPast(originalUpdatedAt);
+
         await user.updateProfile({ name: 'Updated' });
 
         expect(user.updatedAt).toBeGreaterThan(originalUpdatedAt);
@@ -293,31 +306,45 @@ describe('User Model', () => {
 
   describe('Field Validation', () => {
     it('should have all required fields defined', () => {
-      const user = new MockUser();
-      
-      expect(user).toHaveProperty('deviceId');
-      expect(user).toHaveProperty('name');
-      expect(user).toHaveProperty('email');
-      expect(user).toHaveProperty('avatarUrl');
-      expect(user).toHaveProperty('level');
-      expect(user).toHaveProperty('xp');
-      expect(user).toHaveProperty('xpToNextLevel');
-      expect(user).toHaveProperty('streak');
-      expect(user).toHaveProperty('tokens');
-      expect(user).toHaveProperty('nfts');
-      expect(user).toHaveProperty('isActive');
-      expect(user).toHaveProperty('createdAt');
-      expect(user).toHaveProperty('updatedAt');
+      const decorated = new MockUser({
+        deviceId: 'device-1',
+        name: 'Name',
+        email: null,
+        avatarUrl: null,
+        level: 1,
+        xp: 0,
+        xpToNextLevel: 1000,
+        streak: 0,
+        tokens: 0,
+        nfts: 0,
+        isActive: true,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+
+      expect(decorated).toHaveProperty('deviceId');
+      expect(decorated).toHaveProperty('name');
+      expect(decorated).toHaveProperty('email');
+      expect(decorated).toHaveProperty('avatarUrl');
+      expect(decorated).toHaveProperty('level');
+      expect(decorated).toHaveProperty('xp');
+      expect(decorated).toHaveProperty('xpToNextLevel');
+      expect(decorated).toHaveProperty('streak');
+      expect(decorated).toHaveProperty('tokens');
+      expect(decorated).toHaveProperty('nfts');
+      expect(decorated).toHaveProperty('isActive');
+      expect(decorated).toHaveProperty('createdAt');
+      expect(decorated).toHaveProperty('updatedAt');
     });
 
     it('should handle null values for optional fields', () => {
-      const user = new MockUser({
+      const sparse = new MockUser({
         email: null,
         avatarUrl: null,
       });
 
-      expect(user.email).toBeNull();
-      expect(user.avatarUrl).toBeNull();
+      expect(sparse.email).toBeNull();
+      expect(sparse.avatarUrl).toBeNull();
     });
 
     it('should handle boolean values', () => {
