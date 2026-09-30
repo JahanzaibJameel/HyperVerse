@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render } from '@testing-library/react-native';
 import { Text, View } from 'react-native';
 
 import { GlowCard } from '@/components/GlowCard';
@@ -39,7 +39,7 @@ describe('GlowCard Component', () => {
 
   it('should render with custom intensity', () => {
     const { getByTestId } = render(
-      <GlowCard {...defaultProps} intensity={0.8} />
+      <GlowCard {...defaultProps} intensity="high" />
     );
     
     expect(getByTestId('test-content')).toBeTruthy();
@@ -61,7 +61,7 @@ describe('GlowCard Component', () => {
 
   it('should render with complex nested children', () => {
     const { getByTestId } = render(
-      <GlowCard glowColor="#00FF00" intensity={0.9}>
+      <GlowCard glowColor="#00FF00" intensity="high">
         <View testID="container">
           <Text testID="title">Title</Text>
           <Text testID="description">Description</Text>
@@ -130,13 +130,13 @@ describe('GlowCard Component', () => {
 
   it('should handle intensity changes', () => {
     const { rerender, getByTestId } = render(
-      <GlowCard {...defaultProps} intensity={0.5} />
+      <GlowCard {...defaultProps} intensity="low" />
     );
     
     expect(getByTestId('test-content')).toBeTruthy();
     
     rerender(
-      <GlowCard {...defaultProps} intensity={0.9} />
+      <GlowCard {...defaultProps} intensity="high" />
     );
     
     expect(getByTestId('test-content')).toBeTruthy();
@@ -149,7 +149,7 @@ describe('GlowCard Component', () => {
         {...defaultProps}
         style={customStyle}
         glowColor="#FF00FF"
-        intensity={0.7}
+        intensity="medium"
       />
     );
     
@@ -158,23 +158,25 @@ describe('GlowCard Component', () => {
 
   it('should handle text nodes as children', () => {
     const { getByText } = render(
-      <GlowCard>Plain text content</GlowCard>
+      <GlowCard>
+        <Text>Plain text content</Text>
+      </GlowCard>
     );
-    
+
     expect(getByText('Plain text content')).toBeTruthy();
   });
 
   it('should handle mixed children types', () => {
     const { getByTestId, getByText } = render(
       <GlowCard>
-        Text node
+        <Text>Text node</Text>
         <Text testID="element">Element</Text>
-        null
+        {null}
         {undefined}
-        Text node 2
+        <Text>Text node 2</Text>
       </GlowCard>
     );
-    
+
     expect(getByText('Text node')).toBeTruthy();
     expect(getByTestId('element')).toBeTruthy();
     expect(getByText('Text node 2')).toBeTruthy();
