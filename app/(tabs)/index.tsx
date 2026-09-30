@@ -1,24 +1,18 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
-  FadeIn,
   FadeInUp,
   FadeInDown,
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withRepeat,
-  withTiming,
 } from "react-native-reanimated";
 
 import { GlowCard } from "@/components/GlowCard";
@@ -26,15 +20,11 @@ import { StatBar } from "@/components/StatBar";
 import { XPBar } from "@/components/XPBar";
 import { LiveTicker } from "@/components/LiveTicker";
 import { NotificationBadge } from "@/components/NotificationBadge";
-import { useApp } from "@/context/AppContext";
+import { useAuthStore } from "@/lib/stores/authStore";
+import { HealthRepository } from "@/lib/database/repositories/HealthRepository";
+import { FinanceRepository } from "@/lib/database/repositories/FinanceRepository";
+import { TaskRepository } from "@/lib/database/repositories/TaskRepository";
 import { useColors } from "@/hooks/useColors";
-
-const SUGGESTIONS = [
-  { icon: "lightning-bolt" as const, text: "Heart rate elevated — consider a walk", color: "#ff6b00" },
-  { icon: "chart-line" as const, text: "Portfolio up 4.2% — great week!", color: "#00ff9d" },
-  { icon: "robot" as const, text: "Sleep score: 84 — well rested", color: "#00d4ff" },
-  { icon: "fire" as const, text: "12 day streak — keep it up!", color: "#ffb800" },
-];
 
 const LIVE_EVENTS = [
   { text: "QuantumX just claimed a Legendary NFT", icon: "star" as const, color: "#ffb800" },
@@ -42,10 +32,31 @@ const LIVE_EVENTS = [
   { text: "Your smart thermostat saved 8% energy", icon: "home-automation" as const, color: "#00ff9d" },
 ];
 
+const EMPTY_HEALTH = {
+  steps: 0,
+  stepsGoal: 10000,
+  calories: 0,
+  sleep: 0,
+  heartRate: 0,
+  workouts: 0,
+};
+
+const EMPTY_FINANCE = {
+  balance: 0,
+  income: 0,
+  expenses: 0,
+  savings: 0,
+  investments: 0,
+  budgetUsed: 0,
+};
+
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, health, finance } = useApp();
+  const { user } = useAuthStore();
+  const [health, setHealth] = useState(EMPTY_HEALTH);
+  const [finance, setFinance] = useState(EMPTY_FINANCE);
+  const [openTasks, setOpenTasks] = useState(0);
   const [eventIdx, setEventIdx] = useState(0);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -55,7 +66,88 @@ export default function DashboardScreen() {
     return () => clearInterval(t);
   }, []);
 
+  const loadDashboard = useCallback(async () => {
+    if (!user?.dbId) return;
+    try {
+      const [metric, financeSummary, tasks] = await Promise.all([
+        HealthRepository.findLatest(user.dbId),
+        FinanceRepository.summary(user.dbId),
+        TaskRepository.findByUser(user.dbId),
+      ]);
+
+      setHealth(
+        metric
+          ? {
+              steps: metric.steps,
+              stepsGoal: metric.stepsGoal,
+              calories: metric.calories,
+              sleep: metric.sleepHours,
+              heartRate: metric.heartRate,
+              workouts: metric.workouts,
+            }
+          : EMPTY_HEALTH
+      );
+
+      setFinance(financeSummary);
+      setOpenTasks(tasks.filter((t) => t.status === 'todo' || t.status === 'in_progress').length);
+    } catch (error) {
+      console.error("Failed to load dashboard data", error);
+    }
+  }, [user?.dbId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboard();
+    }, [loadDashboard])
+  );
+
   const ev = LIVE_EVENTS[eventIdx];
+
+  // Insights are derived from the user's own records rather than hardcoded strings.
+  const suggestions = (() => {
+    const items: { icon: "lightning-bolt" | "chart-line" | "robot" | "fire"; text: string; color: string }[] = [];
+
+    if (health.steps > 0 && health.steps >= health.stepsGoal) {
+      items.push({ icon: "fire", text: `${health.steps.toLocaleString()} steps — goal reached!`, color: "#ffb800" });
+    } else if (health.steps > 0) {
+      items.push({
+        icon: "fire",
+        text: `${(health.stepsGoal - health.steps).toLocaleString()} steps to go today`,
+        color: "#ffb800",
+      });
+    }
+
+    if (health.sleep > 0) {
+      items.push({
+        icon: "robot",
+        text: `Sleep: ${health.sleep.toFixed(1)}h — ${health.sleep >= 7 ? "well rested" : "consider an early night"}`,
+        color: "#00d4ff",
+      });
+    }
+
+    if (health.heartRate > 100) {
+      items.push({ icon: "lightning-bolt", text: "Heart rate elevated — consider a walk", color: "#ff6b00" });
+    }
+
+    if (finance.income > 0 && finance.expenses > 0) {
+      const rate = Math.round((1 - finance.expenses / finance.income) * 100);
+      items.push({
+        icon: "chart-line",
+        text: `Savings rate ${rate}% — ${rate >= 20 ? "great work" : "room to improve"}`,
+        color: "#00ff9d",
+      });
+    }
+
+    if (openTasks > 0) {
+      items.push({ icon: "lightning-bolt", text: `${openTasks} open task${openTasks === 1 ? "" : "s"} waiting`, color: "#7c3aed" });
+    }
+
+    if (items.length === 0) {
+      items.push({ icon: "robot", text: "Add tasks, habits, or health data to unlock insights", color: "#00d4ff" });
+    }
+
+    return items.slice(0, 4);
+  })();
 
   return (
     <ScrollView
@@ -69,13 +161,13 @@ export default function DashboardScreen() {
 
       <View style={{ paddingHorizontal: 16 }}>
         {/* Header */}
-        <Animated.View 
+        <Animated.View
           entering={FadeInDown.duration(600).delay(200)}
           style={[styles.header, { paddingTop: topPad + 16 }]}
         >
           <View>
             <Text style={[styles.greeting, { color: colors.mutedForeground }]}>GOOD MORNING</Text>
-            <Text style={[styles.username, { color: colors.foreground }]}>{user.name}</Text>
+            <Text style={[styles.username, { color: colors.foreground }]}>{user?.name || "User"}</Text>
           </View>
           <NotificationBadge />
         </Animated.View>
@@ -94,15 +186,15 @@ export default function DashboardScreen() {
 
           <View style={styles.levelRow}>
             <View style={[styles.levelBadge, { backgroundColor: colors.cyan + "22", borderColor: colors.cyan + "44" }]}>
-              <Text style={[styles.levelText, { color: colors.cyan }]}>LVL {user.level}</Text>
+              <Text style={[styles.levelText, { color: colors.cyan }]}>LVL {user?.level || 1}</Text>
             </View>
             <View style={styles.streakRow}>
               <MaterialCommunityIcons name="fire" size={14} color={colors.warning} />
-              <Text style={[styles.streakText, { color: colors.warning }]}>{user.streak} STREAK</Text>
+              <Text style={[styles.streakText, { color: colors.warning }]}>{user?.streak || 0} STREAK</Text>
             </View>
             <View style={[styles.tokenRow, { backgroundColor: colors.warning + "15" }]}>
               <MaterialCommunityIcons name="hexagon-outline" size={12} color={colors.warning} />
-              <Text style={[styles.tokenText, { color: colors.warning }]}>{user.tokens.toLocaleString()}</Text>
+              <Text style={[styles.tokenText, { color: colors.warning }]}>{(user?.tokens || 0).toLocaleString()}</Text>
             </View>
           </View>
 
@@ -121,8 +213,8 @@ export default function DashboardScreen() {
           {[
             { icon: "shoe-sneaker" as const, val: health.steps.toLocaleString(), label: "STEPS", color: colors.green },
             { icon: "heart-pulse" as const, val: String(health.heartRate), label: "BPM", color: colors.pink },
-            { icon: "moon-waning-crescent" as const, val: `${health.sleep}h`, label: "SLEEP", color: colors.cyan },
-            { icon: "ethereum" as const, val: String(user.nfts), label: "NFTs", color: colors.purple },
+            { icon: "moon-waning-crescent" as const, val: health.sleep > 0 ? `${health.sleep.toFixed(1)}h` : "—", label: "SLEEP", color: colors.cyan },
+            { icon: "clipboard-check-outline" as const, val: String(openTasks), label: "TASKS", color: colors.purple },
           ].map((s, i) => (
             <GlowCard key={i} style={styles.statCard} glowColor={s.color}>
               <MaterialCommunityIcons name={s.icon} size={18} color={s.color} />
@@ -142,7 +234,7 @@ export default function DashboardScreen() {
           </View>
           <StatBar label="Steps" value={health.steps} max={health.stepsGoal} color={colors.green} />
           <StatBar label="Calories" value={health.calories} max={2500} color={colors.orange} unit="kcal" />
-          <StatBar label="Sleep quality" value={84} max={100} color={colors.cyan} unit="%" />
+          <StatBar label="Workouts" value={health.workouts} max={7} color={colors.purple} />
           </GlowCard>
         </Animated.View>
 
@@ -168,15 +260,15 @@ export default function DashboardScreen() {
           </GlowCard>
         </Animated.View>
 
-        {/* AI suggestions */}
+        {/* Insights */}
         <Animated.View entering={FadeInUp.duration(800).delay(700)}>
           <GlowCard glowColor={colors.purple} style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="brain" size={16} color={colors.purple} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>AI INSIGHTS</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>INSIGHTS</Text>
           </View>
-          {SUGGESTIONS.map((s, i) => (
-            <View key={i} style={[styles.suggestion, { borderBottomColor: colors.border, borderBottomWidth: i < SUGGESTIONS.length - 1 ? 1 : 0 }]}>
+          {suggestions.map((s, i) => (
+            <View key={i} style={[styles.suggestion, { borderBottomColor: colors.border, borderBottomWidth: i < suggestions.length - 1 ? 1 : 0 }]}>
               <View style={[styles.sugIcon, { backgroundColor: s.color + "20" }]}>
                 <MaterialCommunityIcons name={s.icon} size={14} color={s.color} />
               </View>
@@ -184,33 +276,6 @@ export default function DashboardScreen() {
             </View>
           ))}
           </GlowCard>
-        </Animated.View>
-
-        {/* AR city teaser */}
-        <Animated.View entering={FadeInUp.duration(800).delay(800)}>
-          <LinearGradient
-            colors={["#0d1a2e", "#120828"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.arTeaser, { borderColor: colors.purple + "44" }]}
-          >
-          <View style={styles.arTeaserContent}>
-            <MaterialCommunityIcons name="city-variant-outline" size={32} color={colors.purple} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.arTeaserTitle, { color: colors.foreground }]}>AR CITY OVERLAY</Text>
-              <Text style={[styles.arTeaserSub, { color: colors.mutedForeground }]}>4 objects detected nearby</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={22} color={colors.purple} />
-          </View>
-          <View style={styles.arTeaserStats}>
-            {[{ val: "#3", label: "Global Rank" }, { val: "24", label: "Active Nodes" }, { val: "2", label: "Raids Live" }].map((s, i) => (
-              <View key={i} style={styles.arStat}>
-                <Text style={[styles.arStatVal, { color: colors.purple }]}>{s.val}</Text>
-                <Text style={[styles.arStatLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
-              </View>
-            ))}
-          </View>
-        </LinearGradient>
         </Animated.View>
       </View>
     </ScrollView>
@@ -249,12 +314,4 @@ const styles = StyleSheet.create({
   suggestion: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10 },
   sugIcon: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   sugText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular" },
-  arTeaser: { borderRadius: 20, borderWidth: 1, padding: 16, marginBottom: 16, overflow: "hidden" },
-  arTeaserContent: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 },
-  arTeaserTitle: { fontSize: 14, fontFamily: "Inter_700Bold" },
-  arTeaserSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  arTeaserStats: { flexDirection: "row", justifyContent: "space-around" },
-  arStat: { alignItems: "center" },
-  arStatVal: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  arStatLabel: { fontSize: 10, fontFamily: "Inter_500Medium" },
 });
