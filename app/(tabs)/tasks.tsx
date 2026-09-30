@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, FlatList, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -10,66 +10,17 @@ import { NeonButton } from '@/components/NeonButton';
 import { SkeletonLoader, TaskCardSkeleton, StatsCardSkeleton } from '@/components/SkeletonLoader';
 import { DataErrorState } from '@/components/ErrorState';
 import { useColors } from '@/hooks/useColors';
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  category: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'todo' | 'in_progress' | 'completed' | 'cancelled';
-  dueDate?: number;
-  completedAt?: number;
-  xpReward: number;
-  tags: string[];
-  createdAt: number;
-  updatedAt: number;
-}
-
-const mockTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Complete project proposal',
-    description: 'Finish the Q4 project proposal for the client',
-    category: 'work',
-    priority: 'high',
-    status: 'in_progress',
-    dueDate: Date.now() + 86400000, // tomorrow
-    xpReward: 50,
-    tags: ['work', 'important'],
-    createdAt: Date.now() - 3600000,
-    updatedAt: Date.now() - 1800000,
-  },
-  {
-    id: '2',
-    title: 'Morning workout',
-    description: '30 minutes cardio + strength training',
-    category: 'health',
-    priority: 'medium',
-    status: 'todo',
-    xpReward: 20,
-    tags: ['health', 'daily'],
-    createdAt: Date.now() - 7200000,
-    updatedAt: Date.now() - 7200000,
-  },
-  {
-    id: '3',
-    title: 'Review budget',
-    description: 'Go through monthly expenses and adjust budget',
-    category: 'finance',
-    priority: 'medium',
-    status: 'todo',
-    xpReward: 30,
-    tags: ['finance', 'monthly'],
-    createdAt: Date.now() - 10800000,
-    updatedAt: Date.now() - 10800000,
-  },
-];
+import { TaskRepository } from '@/lib/database/repositories/TaskRepository';
+import type { Task } from '@/lib/database/models/Task';
 
 const EmptyState = ({ filter, router }: { filter: string; router: any }) => {
   const colors = useColors();
-  
-  const getEmptyStateContent = () => {
+
+  const getEmptyStateContent = (): {
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
+    title: string;
+    description: string;
+  } => {
     switch (filter) {
       case 'completed':
         return {
@@ -124,55 +75,56 @@ export default function TasksScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
   const { themeMode, accentColor } = useThemeStore();
-  const colors = useColors();
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<'all' | 'todo' | 'in_progress' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Simulate loading data
-  React.useEffect(() => {
-    const loadTasks = async () => {
-      setIsLoading(true);
+  const loadTasks = useCallback(async () => {
+    if (!user?.dbId) {
+      setTasks([]);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const records = await TaskRepository.findByUser(user.dbId);
+      setTasks(records);
       setError(null);
-      
-      try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Simulate occasional errors (10% chance)
-        if (Math.random() < 0.1) {
-          throw new Error('Failed to load tasks');
-        }
-        
-        // In a real app, this would fetch from your database
-        setIsLoading(false);
-      } catch (err) {
-        setError('Failed to load tasks. Please try again.');
-        setIsLoading(false);
-      }
-    };
-    
-    loadTasks();
-  }, []);
+    } catch (err) {
+      console.error('Failed to load tasks', err);
+      setError('Failed to load tasks. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.dbId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadTasks();
+    }, [loadTasks])
+  );
 
   const handleRetry = () => {
-    const loadTasks = async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setIsLoading(false);
-      } catch (err) {
-        setError('Failed to load tasks. Please try again.');
-        setIsLoading(false);
-      }
-    };
-    
+    setIsLoading(true);
     loadTasks();
+  };
+
+  const handleToggleComplete = async (task: Task) => {
+    try {
+      if (task.status === 'completed') {
+        await TaskRepository.update(task, (t) => {
+          t.status = 'todo';
+          t.completedAt = null;
+        });
+      } else {
+        await TaskRepository.markCompleted(task);
+      }
+      await loadTasks();
+    } catch (err) {
+      console.error('Failed to update task', err);
+    }
   };
 
   if (!user) {
@@ -186,7 +138,7 @@ export default function TasksScreen() {
           <SkeletonLoader width={120} height={28} />
           <SkeletonLoader width={100} height={32} />
         </View>
-        
+
         <View style={styles.stats}>
           <StatsCardSkeleton count={3} />
         </View>
@@ -198,7 +150,7 @@ export default function TasksScreen() {
         </View>
 
         <SkeletonLoader width="100%" height={48} style={{ marginBottom: 16 }} />
-        
+
         <TaskCardSkeleton count={3} />
       </View>
     );
@@ -215,14 +167,14 @@ export default function TasksScreen() {
   const isDark = themeMode === 'dark';
 
   const getAccentColor = (color: string): string => {
-    const colors: Record<string, string> = {
+    const accentPalette: Record<string, string> = {
       cyan: '#00ffff',
       purple: '#a855f7',
       pink: '#ec4899',
       green: '#10b981',
       orange: '#f97316',
     };
-    return colors[color] || '#00ffff';
+    return accentPalette[color] || '#00ffff';
   };
 
   const accentColorValue = getAccentColor(accentColor);
@@ -270,10 +222,15 @@ export default function TasksScreen() {
           </View>
         </View>
         <View style={styles.taskActions}>
-          <TouchableOpacity style={styles.actionButton}>
-            <MaterialCommunityIcons 
-              name={item.status === 'completed' ? 'check-circle' : 'circle-outline'} 
-              size={24} 
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleToggleComplete(item)}
+            accessibilityLabel={item.status === 'completed' ? 'Mark as not completed' : 'Mark as completed'}
+            accessibilityRole="button"
+          >
+            <MaterialCommunityIcons
+              name={item.status === 'completed' ? 'check-circle' : 'circle-outline'}
+              size={24}
               color={item.status === 'completed' ? '#00C851' : accentColorValue}
             />
           </TouchableOpacity>
@@ -288,14 +245,14 @@ export default function TasksScreen() {
 
       <View style={styles.taskFooter}>
         <View style={styles.taskTags}>
-          {item.tags.slice(0, 3).map((tag, index) => (
+          {item.parsedTags.slice(0, 3).map((tag, index) => (
             <View key={index} style={[styles.tag, { backgroundColor: accentColorValue + '20' }]}>
               <Text style={[styles.tagText, { color: accentColorValue }]}>{tag}</Text>
             </View>
           ))}
-          {item.tags.length > 3 && (
+          {item.parsedTags.length > 3 && (
             <Text style={[styles.moreTags, { color: isDark ? '#888' : '#666' }]}>
-              +{item.tags.length - 3}
+              +{item.parsedTags.length - 3}
             </Text>
           )}
         </View>
@@ -329,7 +286,7 @@ export default function TasksScreen() {
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#0a0a0a' : '#f8f8f8' }]}>
       <View style={styles.header}>
-        <Text 
+        <Text
           style={[styles.title, { color: isDark ? '#fff' : '#000' }]}
           accessibilityRole="header"
           accessibilityLabel="Tasks Screen"
@@ -348,14 +305,14 @@ export default function TasksScreen() {
 
       <View style={styles.stats}>
         <GlowCard style={styles.statCard}>
-          <Text 
+          <Text
             style={[styles.statNumber, { color: accentColorValue }]}
             accessibilityRole="text"
             accessibilityLabel={`Total tasks: ${taskStats.total}`}
           >
             {taskStats.total}
           </Text>
-          <Text 
+          <Text
             style={[styles.statLabel, { color: isDark ? '#888' : '#666' }]}
             accessibilityRole="text"
             accessibilityLabel="Total"
@@ -396,7 +353,7 @@ export default function TasksScreen() {
       </View>
 
       <TextInput
-        style={[styles.searchInput, { 
+        style={[styles.searchInput, {
           backgroundColor: isDark ? '#1a1a1a' : '#fff',
           color: isDark ? '#fff' : '#000',
           borderColor: isDark ? '#333' : '#ddd'
