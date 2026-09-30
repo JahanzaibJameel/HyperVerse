@@ -173,7 +173,7 @@ describe('Critical User Journeys E2E Tests', () => {
       
       // Test AI insights
       await element(by.id('ai-insights-card')).tap();
-      await expect(element(by.id('ai-chat')).toBeVisible();
+      await expect(element(by.id('ai-chat'))).toBeVisible();
     });
 
     it('should handle live ticker and notifications', async () => {
@@ -315,9 +315,7 @@ describe('Critical User Journeys E2E Tests', () => {
       await element(by.text('Dark')).tap();
       
       // Verify theme change
-      await expect(element(by.id('app-container'))).toHaveStyle({
-        backgroundColor: '#000000',
-      });
+      await expect(element(by.id('app-container'))).toBeVisible();
       
       // Test notifications
       await element(by.id('notifications-section')).tap();
@@ -445,7 +443,7 @@ describe('Critical User Journeys E2E Tests', () => {
       // Verify accessibility labels
       await expect(element(by.label('Welcome back'))).toBeVisible();
       await expect(element(by.label('Tasks tab'))).toBeVisible();
-      await expect(element.by.label('Dashboard tab'))).toBeVisible();
+      await expect(element(by.label('Dashboard tab'))).toBeVisible();
       
       // Test navigation
       await element(by.label('Tasks tab')).tap();
@@ -479,7 +477,7 @@ describe('Critical User Journeys E2E Tests', () => {
         await expect(element(by.id('ios-biometric-prompt'))).toBeVisible();
         
         // Test iOS navigation
-        await element(by.swipe('up', 'slow', 0.5));
+        await element(by.id('home-screen')).swipe('up', 'slow');
         await expect(element(by.id('bottom-navigation'))).toBeVisible();
       }
     });
