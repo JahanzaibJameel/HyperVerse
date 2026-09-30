@@ -27,11 +27,11 @@ function NativeTabLayout() {
         <Label>Home</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="tasks">
-        <Icon sf={{ default: "checklist", selected: "checklist.fill" }} />
+        <Icon sf={{ default: "checklist", selected: "checklist.checked" }} />
         <Label>Tasks</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="habits">
-        <Icon sf={{ default: "target", selected: "target.fill" }} />
+        <Icon sf={{ default: "target", selected: "scope" }} />
         <Label>Habits</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="health">
@@ -73,14 +73,14 @@ function ClassicTabLayout() {
   }
 
   const getAccentColor = (color: string): string => {
-    const colors: Record<string, string> = {
+    const accentPalette: Record<string, string> = {
       cyan: '#00ffff',
       purple: '#a855f7',
       pink: '#ec4899',
       green: '#10b981',
       orange: '#f97316',
     };
-    return colors[color] || '#00ffff';
+    return accentPalette[color] || '#00ffff';
   };
 
   return (
