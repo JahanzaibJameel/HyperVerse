@@ -17,7 +17,7 @@ export function XPBar() {
       duration: 1000,
       useNativeDriver: Platform.OS !== "web",
     }).start();
-  }, [pct]);
+  }, [progress, pct]);
 
   const barWidth = progress.interpolate({
     inputRange: [0, 1],
