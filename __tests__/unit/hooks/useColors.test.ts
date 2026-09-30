@@ -1,10 +1,11 @@
-import { renderHook } from '@testing-library/react-hooks';
+import { renderHook } from '@testing-library/react-native';
 import { useColorScheme } from 'react-native';
 
 import { useColors } from '@/hooks/useColors';
 
 // Mock the colors module
 jest.mock('@/constants/colors', () => ({
+  __esModule: true,
   default: {
     light: {
       text: '#000000',
@@ -56,9 +57,12 @@ jest.mock('@/constants/colors', () => ({
   },
 }));
 
-// Mock useColorScheme
-jest.mock('react-native', () => ({
-  useColorScheme: jest.fn(),
+// Only useColorScheme is stubbed; the rest of react-native must stay real so the
+// testing-library renderer keeps working. The deep module is mocked because
+// spreading the react-native index re-evaluates its TurboModule getters.
+jest.mock('react-native/Libraries/Utilities/useColorScheme', () => ({
+  __esModule: true,
+  default: jest.fn(),
 }));
 
 describe('useColors Hook', () => {
@@ -195,7 +199,7 @@ describe('useColors Hook', () => {
 
     // Change to dark scheme
     mockUseColorScheme.mockReturnValue('dark');
-    rerender();
+    rerender({});
 
     expect(result.current.text).toBe('#ffffff');
   });
