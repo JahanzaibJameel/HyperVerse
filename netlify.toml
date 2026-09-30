@@ -1,0 +1,15 @@
+[build]
+  publish = "static-build"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/manifest"
+  to = "/.netlify/functions/manifest"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/"
+  to = "/.netlify/functions/manifest"
+  status = 200
+  force = true
