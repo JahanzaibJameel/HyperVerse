@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, Platform, StyleSheet, Text, View } from "react-native";
+import { Animated, Platform, StyleSheet, View } from "react-native";
 
 import { useColors } from '@/hooks/useColors';
 
