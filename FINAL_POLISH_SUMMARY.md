@@ -1,115 +1,189 @@
-# HyperVerse Final Polish Summary (8.5 → 10/10)
+---
+title: Engineering Verification Record
+description: What was changed to make the build green, what was verified, and what remains broken.
+status: reference
+last_verified: 2026-09-29
+audience: maintainer
+---
 
-This document summarizes all the improvements made to take HyperVerse from an 8.5/10 production score to a perfect 10/10.
+# Engineering Verification Record
 
-## ✅ Completed Improvements
+**`reference`** · verified `2026-09-29` · ~6 min read
 
-### 1. Secret Management
-- **Created `.env.example`** with comprehensive environment variable templates
-- **Updated `.gitignore`** already properly excludes `.env` files
-- **Audited secret usage** in `AuthService.ts` and build scripts
-- **Added Constants.expoConfig.extra** pattern for secure secret access
+> [!IMPORTANT]
+> The previous version of this file was titled "HyperVerse Final Polish Summary (8.5 → 10/10)"
+> and claimed the project had reached "a perfect 10/10 production score" with "enterprise-level
+> security" and was "ready for deployment to production environments and enterprise use cases."
+> The specific claims it made — Sentry crash reporting, SSL pinning, ProGuard obfuscation wired
+> into the build, a 20–30% bundle reduction — were not implemented and not verifiable. A
+> "production score" is not a measurement anyone can run, and this project has not been
+> audited.
+>
+> This file now records only work that was actually done and results that can be reproduced
+> with the commands shown. It is not a scorecard.
 
-### 2. Bundle Size Optimization
-- **Created lazy loading components** for heavy screens (AI, Blockchain, AR)
-- **Updated `tsconfig.json`** to support dynamic imports (`"module": "esnext"`)
-- **Enhanced `metro.config.js`** with:
-  - Advanced minification settings
-  - Comment removal in production
-  - Inline requires for small modules
-  - Asset optimization configuration
-- **Added bundle report script** to `package.json`
+## Contents
 
-### 3. Crash Reporting & Logging
-- **Added `sentry-expo`** to dependencies with graceful fallback
-- **Created structured logger** (`lib/logger.ts`) with:
-  - Multiple log levels (DEBUG, INFO, WARN, ERROR)
-  - Sentry integration for production errors
-  - Performance timing utilities
-  - User action tracking
-  - Session management
-- **Enhanced ErrorBoundary** to integrate with structured logger
-- **Optional Sentry import** to handle missing dependencies gracefully
+1. [Verified state](#1-verified-state)
+2. [Production bugs fixed](#2-production-bugs-fixed)
+3. [Build and tooling fixes](#3-build-and-tooling-fixes)
+4. [Test infrastructure](#4-test-infrastructure)
+5. [Documentation](#5-documentation)
+6. [Still not working](#6-still-not-working)
 
-### 4. Network Security
-- **Added `expo-ssl-pinning`** configuration to `app.json`
-- **Configured SSL pinning domains** (ready for future API integration)
-- **Added SSL certificate environment variable** template
+---
 
-### 5. Code Obfuscation
-- **Created comprehensive ProGuard rules** (`proguard-rules.pro`)
-- **Configured for all major libraries** (React Native, Expo, Tamagui, etc.)
-- **Optimization settings** for release builds
-- **Logging removal** in production builds
-- **Class and method preservation** for critical functionality
+## 1. Verified state
 
-### 6. Performance & Security Features
-- **Bundle size tracking** with `react-native-bundle-visualizer`
-- **Image compression** via Metro configuration
-- **Code splitting** for heavy screens
-- **Error boundary integration** across the app
-- **Structured logging** for debugging and monitoring
+Measured on **2026-09-29** (Windows, pnpm 9.15.0). Reproduce with the commands shown.
 
-## 📁 New Files Created
+| Check | Command | Before | After |
+| :-- | :-- | :-- | :-- |
+| TypeScript | `npm run typecheck` | 6 errors | **0 errors** |
+| Lint | `npm run lint` | 6 errors, 118 warnings | **0 errors, 59 warnings** |
+| Tests | `npm test` | 25 failing of 113 | **133 passing of 133** |
+| Suites | `npm test` | 6 of 9 failing | **9 of 9 passing** |
+| Coverage | `npm test -- --coverage` | not measured | **13.88% stmts** |
+| Build | `npm run build` | blocked | **succeeds** |
 
-1. `.env.example` - Environment variables template
-2. `lib/logger.ts` - Structured logging system
-3. `components/LazyScreen.tsx` - Lazy loading wrapper
-4. `components/lazy/LazyAI.tsx` - Lazy AI screen
-5. `components/lazy/LazyBlockchain.tsx` - Lazy blockchain screen
-6. `components/lazy/LazyAR.tsx` - Lazy AR screen
-7. `proguard-rules.pro` - Android obfuscation rules
-8. `FINAL_POLISH_SUMMARY.md` - This summary
+| Artifact | Size |
+| :-- | --: |
+| iOS `bundle.js` | 5.04 MB |
+| Android `bundle.js` | 5.05 MB |
+| Assets copied | 49 |
+| Manifests | iOS and Android, valid, pointing at the emitted bundles |
 
-## 🔧 Modified Files
+The 59 remaining lint warnings are unused imports and `react-hooks/exhaustive-deps`. They are
+tracked, not ignored.
 
-1. `package.json` - Added new dependencies and scripts
-2. `app.json` - Added SSL pinning and Sentry plugins
-3. `tsconfig.json` - Enabled dynamic imports
-4. `metro.config.js` - Enhanced with compression settings
-5. `components/ErrorBoundary.tsx` - Integrated with logger
+## 2. Production bugs fixed
 
-## 🚀 Next Steps for Production
+These were live defects. Each is now covered by a test.
 
-1. **Install dependencies**: Run `npm install` or `pnpm install`
-2. **Copy `.env.example` to `.env`** and fill in actual values
-3. **Set up Sentry**: Get DSN from Sentry.io and add to `.env`
-4. **Configure SSL certificates**: Add certificate SHA256 for API domains
-5. **Copy ProGuard rules**: Move `proguard-rules.pro` to `android/app/`
-6. **Run tests**: Execute `npm test` and `npm run lint`
-7. **Generate bundle report**: Run `npm run bundle-report`
-8. **Build and test**: Run production builds and verify functionality
+### Models assigned to `@readonly` fields — 34 occurrences
 
-## 📊 Expected Improvements
+Every model declared `@readonly @date('updated_at') updatedAt` and then assigned to it inside
+`update()`. At runtime this throws
+`Attempt to set new value on a property marked as @readonly`. Any write to a user, task, habit,
+note, event, transaction, goal, or setting would have failed.
 
-- **Bundle Size**: 20-30% reduction through lazy loading and compression
-- **Error Tracking**: 100% error capture with Sentry integration
-- **Security**: SSL pinning and code obfuscation
-- **Performance**: Faster initial load with lazy loading
-- **Monitoring**: Structured logging for production debugging
+WatermelonDB maintains `created_at` and `updated_at` automatically, so the 34 manual assignments
+were removed across `lib/database/models/`.
 
-## 🎯 Production Readiness Checklist
+### `User.addXP` only ever granted one level
 
-- [x] Secret management system in place
-- [x] Crash reporting configured
-- [x] Bundle size optimization implemented
-- [x] Network security measures added
-- [x] Code obfuscation rules ready
-- [x] Lazy loading for heavy screens
-- [x] Structured logging system
-- [x] Error boundaries enhanced
-- [ ] Dependencies installed (requires package manager)
-- [ ] Environment variables configured
-- [ ] Production build tested
-- [ ] Bundle size verified (< 3MB initial)
+```ts
+if (newXP >= this.xpToNextLevel) {   // 'if', not 'while'
+```
 
-## 🏆 Achievement
+Awarding 300 XP with a 100-XP threshold and a 1.5× growth rate should cross two levels. The
+single-level branch also used `this.xpToNextLevel` for the overflow calculation instead of the
+progressively growing threshold. Corrected to a `while` loop in `lib/database/models/User.ts`
+and mirrored in the test's `MockUser`.
 
-With these improvements, **HyperVerse now achieves a perfect 10/10 production score** with:
-- Enterprise-level security
-- Production-ready error handling
-- Optimized performance
-- Comprehensive monitoring
-- Maintained code quality
+### `Task.removeTag` rewrote the record for a no-op
 
-The app is now ready for deployment to production environments and enterprise use cases.
+Removing a tag that was not present still called `update()`, bumping `updated_at` and serialising
+an unchanged array. Now guarded like `addTag`.
+
+### `AuthService.createInitialProfile` set `email: undefined`
+
+`UserProfile.email` is nullable, but an omitted email produced `undefined` rather than `null`,
+so `profile.email` failed a `toBeNull()` assertion and serialised inconsistently. Now
+`email ?? null`, and `UserProfile.email` is `string | null` to match `avatarUrl`.
+
+### `whenDatabaseReady()` assumed a SQLite-only API
+
+`lib/database/database.ts` read `adapter.initializingPromise` unconditionally, which throws for
+any adapter lacking it. Now guarded, falling back to an already-resolved promise —
+WatermelonDB's work queue already serialises calls until the adapter is set up.
+
+## 3. Build and tooling fixes
+
+- **`scripts/build.js`** is now cross-platform: it falls back to `localhost` when no Replit
+  domain is set, uses `spawnSync` with `shell` for Windows, detects pnpm/npm/yarn, and invokes
+  `<package-manager> exec expo …`. It previously assumed POSIX.
+- **`metro.config.js`** had `inline: 2` at the top level of the Terser options, where it does
+  nothing. Moved under `compress`.
+- **`eslint.config.js`** was linting `.kilo/worktrees/`, a directory containing full copies of
+  the repository from an unrelated branch. That produced 4 of the 6 lint errors. Worktrees and
+  `static-build/` are now ignored, as are `.kilo/worktrees` in `jest.config.js` and
+  `tsconfig.json`.
+- **Two `no-shadow` errors** where a local `colors` inside `getAccentColor` shadowed the
+  `colors` from `useColors()`. Renamed to `accentPalette`.
+- **`lib/database/migrations/`** was removed. Schema version 1 already creates every table, and
+  the migration files called a `migration` API that does not exist in WatermelonDB 0.27.
+
+## 4. Test infrastructure
+
+The original 25 failures were mostly harness problems, but chasing them surfaced the real bugs
+above.
+
+- **`jest.setup.js` mocked the root of `@nozbe/watermelondb` with an empty object**, so
+  `tableSchema is not a function`. Replaced with a swap of only the SQLite adapter for
+  WatermelonDB's bundled pure-JS LokiJS adapter. Database tests now exercise real query,
+  relation, and transaction behaviour.
+- **AsyncStorage and SecureStore mocks always resolved `null`**, so nothing could persist
+  between a save and a load. Both are now in-memory stores.
+- **`useColors.test.ts` replaced the entire `react-native` module**, breaking the renderer. It
+  now mocks only `react-native/Libraries/Utilities/useColorScheme`, and its `colors` mock
+  declares `__esModule: true`.
+- **`authFlow.test.tsx` asserted real `AuthService` control flow on an auto-mocked module** —
+  for example, expecting `enableBiometricAuth` to call `isBiometricAvailable` on a stub. Five
+  tests could never have passed meaningfully. They now use the real singleton with
+  `jest.spyOn`, since the native dependencies were already mocked.
+- **Model tests ran against hand-written mocks** that duplicated production logic. The mocks
+  were brought in line (`this.update()`, the multi-level XP loop), and smoke-test cases were
+  added against the real models.
+- **Smoke tests called `update()` outside a writer block**, which WatermelonDB rejects. Wrapped
+  in `database.write()`.
+- **The Detox specs are excluded from Jest** via `testPathIgnorePatterns`. They remain unrun.
+
+## 5. Documentation
+
+All eleven markdown files were rewritten against the source, replacing claims that could not be
+verified, and two new guides were added. The largest corrections:
+
+| Previous claim | Reality |
+| :-- | :-- |
+| "95% test coverage" | 13.88% |
+| "10/10 production score" | Not a measurement; not audited |
+| "Bundle < 4MB" | 5.04 MB iOS / 5.05 MB Android |
+| "CI/CD with deployment and monitoring" | 4 workflows exist; no deployment, no monitoring |
+| "LanceDB" | Not a dependency; replaced by a local JSON vector store |
+| "React Native Skia" | Not a dependency |
+| "Expo Router v4" | v6 |
+| "i18n: English, Japanese, Spanish" | English hardcoded; i18n packages imported nowhere |
+| "Local analytics" | No analytics module exists |
+| "AES-256 encryption at rest" | No application-level encryption; SQLite is plaintext |
+| "GDPR, CCPA compliant", "A+ rating" | No compliance review performed |
+| `security@hyperverse.app` | No such contact configured |
+| `components/charts/`, `components/forms/` | Neither directory exists |
+| `docs/api.md`, `docs/deployment.md` | Did not exist; dead links |
+| `__tests__/__mocks__/` | Does not exist |
+| A `src/` layout | No `src/` directory exists |
+| Husky hooks, Prettier, `lint:fix` | None of the three exist |
+
+## 6. Still not working
+
+Recorded so the sections above are not read as "production ready".
+
+1. **No screen uses the database.** `app/` contains no import of `lib/database`.
+2. **`habits.tsx` and `settings.tsx` are 14-line placeholders.**
+3. **The AI feature cannot run.** No model files, and no screen calls `AIService`.
+4. **Coverage is 13.88%**, and `app/` is excluded from the coverage globs entirely.
+5. **Detox E2E specs have never executed.**
+6. **`pnpm dev` only works on Replit.**
+7. **`notes.is_encrypted` is not implemented.**
+
+The full list, with remediation notes, is in [ROADMAP.md](ROADMAP.md) and
+[ROADMAP_V2.md](ROADMAP_V2.md).
+
+---
+
+**Status** `reference` · **verified** `2026-09-29` · [README](README.md) ·
+[Roadmap](ROADMAP.md) · [Technical debt](ROADMAP_V2.md) ·
+[Testing](docs/TESTING.md)
+
+[Edit this page](https://github.com/JahanzaibJameel/HyperVerse/blob/main/FINAL_POLISH_SUMMARY.md) ·
+[Open an issue](https://github.com/JahanzaibJameel/HyperVerse/issues/new)
