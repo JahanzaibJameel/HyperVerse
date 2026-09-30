@@ -2,6 +2,7 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useRef } from "react";
 import { Animated, Platform, StyleProp, StyleSheet, Text, TouchableOpacity, ViewStyle } from "react-native";
+import type { AccessibilityRole } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -14,7 +15,7 @@ interface NeonButtonProps {
   filled?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
-  accessibilityRole?: string;
+  accessibilityRole?: AccessibilityRole;
   disabled?: boolean;
 }
 
