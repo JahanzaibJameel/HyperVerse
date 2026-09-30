@@ -1,188 +1,197 @@
+---
+title: Security Policy
+description: What HyperVerse does to protect data, what it does not, and how to report a vulnerability.
+status: pre-release
+last_verified: 2026-09-29
+audience: all
+---
+
 # Security Policy
 
-## 🛡️ Security
+**`pre-release`** · verified `2026-09-29` · ~6 min read
 
-At HyperVerse, we take security seriously. This document outlines our security practices and how to report vulnerabilities.
+> [!IMPORTANT]
+> This document previously claimed an "A+ security rating", "GDPR, CCPA compliant", "zero known
+> critical vulnerabilities", AES-256 encryption at rest, a bug bounty programme, and
+> third-party audits. **None of that is true.** No third-party audit has been performed and no
+> compliance review has been done. This version documents the actual posture so it can be
+> judged accurately.
 
-## 🔒 Our Security Commitment
+## Contents
 
-- **Privacy-First**: All user data stays on-device by default
-- **Local Processing**: AI inference runs entirely on the user's device
-- **No Telemetry**: We don't collect user data or analytics
-- **Open Source**: Full transparency with auditable codebase
-- **Regular Updates**: Prompt security patches and dependency updates
-
-## 🎯 Security Features
-
-### Data Protection
-- **Encryption**: AES-256 encryption for sensitive data at rest
-- **Biometric Auth**: Face ID, Touch ID, and fingerprint support
-- **Secure Storage**: Uses platform secure storage mechanisms
-- **Local Database**: SQLite with WatermelonDB, no cloud dependencies
-
-### Network Security
-- **Offline-First**: Core functionality works without internet
-- **Optional Sync**: User-controlled data synchronization
-- **Encrypted Export**: Secure data export/import functionality
-- **No Third-Party APIs**: No external service dependencies for core features
-
-### AI Security
-- **On-Device Models**: All AI processing happens locally
-- **Model Validation**: Cryptographic verification of AI models
-- **Sandboxed Execution**: Isolated AI inference environment
-- **Privacy by Design**: No user data sent to external AI services
-
-## 🐛 Reporting Vulnerabilities
-
-### How to Report
-If you discover a security vulnerability, please report it privately:
-
-- **Email**: security@hyperverse.app
-- **PGP Key**: Available on request
-- **Response Time**: Within 48 hours
-
-### What to Include
-- Detailed description of the vulnerability
-- Steps to reproduce (if applicable)
-- Potential impact assessment
-- Any proof-of-concept code or screenshots
-
-### Responsible Disclosure
-We follow responsible disclosure practices:
-
-1. **Confirmation**: We'll acknowledge receipt within 48 hours
-2. **Assessment**: We'll investigate and validate the vulnerability
-3. **Timeline**: We'll provide an estimated fix timeline
-4. **Coordination**: We'll coordinate disclosure with you
-5. **Recognition**: We'll credit you in our security acknowledgments
-
-## 🔍 Security Scope
-
-### In Scope
-- HyperVerse mobile applications (iOS, Android, Web)
-- AI model security and integrity
-- Data encryption and storage
-- Authentication and authorization
-- Network communications
-- Third-party dependencies
-
-### Out of Scope
-- Physical attacks on devices
-- Social engineering attacks
-- Issues in third-party services
-- Vulnerabilities in outdated versions
-- Denial of service attacks
-
-## 🛠️ Security Best Practices
-
-### For Users
-1. **Keep Updated**: Always use the latest version
-2. **Secure Device**: Use device passcode/biometrics
-3. **Review Permissions**: Only grant necessary permissions
-4. **Backup Data**: Regularly backup your data
-5. **Official Sources**: Download only from official stores
-
-### For Developers
-1. **Code Review**: All changes undergo security review
-2. **Dependency Scanning**: Automated vulnerability scanning
-3. **Static Analysis**: Regular security code analysis
-4. **Penetration Testing**: Regular security assessments
-5. **Security Training**: Team security awareness training
-
-## 🔧 Security Measures
-
-### Development Security
-- **Secure Coding**: Following OWASP guidelines
-- **Dependency Management**: Automated security updates
-- **Code Signing**: All releases are cryptographically signed
-- **Secure Build**: Reproducible and secure build process
-- **Access Control**: Minimal access principle for development
-
-### Release Security
-- **Code Review**: Mandatory security review for releases
-- **Vulnerability Scanning**: Automated scanning before releases
-- **Model Verification**: Cryptographic verification of AI models
-- **Package Integrity**: Verified package distribution
-- **Rollback Capability**: Quick rollback capability for issues
-
-## 📊 Security Metrics
-
-### Current Status
-- **Vulnerability Count**: 0 known critical vulnerabilities
-- **Dependencies**: All dependencies scanned and up-to-date
-- **Code Coverage**: 85%+ test coverage for security-critical code
-- **Security Score**: A+ rating on security audits
-- **Compliance**: GDPR, CCPA compliant
-
-### Monitoring
-- **Automated Scanning**: Continuous vulnerability monitoring
-- **Security Alerts**: Real-time security notifications
-- **Bug Bounty**: Responsible disclosure program
-- **Community Reports**: Community security reporting
-- **Third-party Audits**: Regular security assessments
-
-## 🚨 Incident Response
-
-### Response Process
-1. **Detection**: Automated monitoring and reporting
-2. **Assessment**: Rapid impact assessment
-3. **Containment**: Immediate mitigation measures
-4. **Communication**: Transparent user communication
-5. **Resolution**: Complete fix and verification
-6. **Post-Mortem**: Lessons learned and improvements
-
-### Communication
-- **Security Blog**: Detailed incident reports
-- **Email Notifications**: Direct user communication
-- **Social Media**: Public status updates
-- **GitHub Issues**: Technical updates and patches
-
-## 🤝 Security Team
-
-### Core Team
-- **Security Lead**: Oversees all security initiatives
-- **Security Engineers**: Implement security measures
-- **Security Researchers**: Vulnerability research and testing
-- **Compliance Officer**: Regulatory compliance
-- **Community Manager**: Security community engagement
-
-### External Partners
-- **Security Auditors**: Third-party security assessments
-- **Bug Bounty Hunters**: Responsible disclosure program
-- **Security Researchers**: Academic and industry collaboration
-- **Legal Counsel**: Security legal compliance
-
-## 📚 Security Resources
-
-### Documentation
-- [Architecture Security](./ARCHITECTURE.md#security)
-- [Privacy Policy](./PRIVACY.md)
-- [Data Handling](./docs/data-handling.md)
-- [AI Security](./docs/ai-security.md)
-
-### Tools and Services
-- **Dependency Scanning**: Dependabot, Snyk
-- **Code Analysis**: SonarQube, CodeQL
-- **Penetration Testing**: External security firms
-- **Compliance**: Automated compliance checking
-
-### Community
-- **Security Discussions**: GitHub Discussions
-- **Bug Reports**: Private vulnerability reporting
-- **Security Blog**: Latest security updates
-- **Newsletter**: Security news and updates
+1. [Posture summary](#1-posture-summary)
+2. [What is implemented](#2-what-is-implemented)
+3. [What is not implemented](#3-what-is-not-implemented)
+4. [Threat model](#4-threat-model)
+5. [Reporting a vulnerability](#5-reporting-a-vulnerability)
+6. [Hardening checklist](#6-hardening-checklist)
 
 ---
 
-## 📞 Contact
+## 1. Posture summary
 
-For security-related inquiries:
+HyperVerse is a pre-release client-only app with no backend, no accounts, and no network calls.
+Telemetry is possible but off by default. That is genuinely good for privacy: there is no
+server to breach and nothing is transmitted unless someone deliberately enables Sentry. The
+risk is almost entirely **local** — anyone with access to an unlocked device can read the data.
 
-- **Security Email**: security@hyperverse.app
-- **PGP Key**: Available on request
-- **Security Blog**: https://hyperverse.app/security
-- **Vulnerability Reporting**: See "Reporting Vulnerabilities" above
+| Area | Status |
+| :-- | :-- |
+| Data in transit | Not applicable — no network requests |
+| Credentials at rest | `expo-secure-store` (platform keychain / keystore) |
+| Domain data at rest | Plaintext SQLite, **no encryption** |
+| UI preferences at rest | Plaintext AsyncStorage |
+| App lock | Implemented (`AuthService`), uses biometric APIs |
+| Transport security | Not applicable |
+| Certificate pinning | Not implemented |
+| Log redaction | Implemented (`redact()` in `lib/logger.ts`) |
+| Account deletion | Implemented — `deleteUserCascade` removes all rows |
+| Dependency scanning | `dependabot.yml` plus an advisory `pnpm audit` CI job |
+| Static analysis | ESLint, enforced in CI, 0 errors and 0 warnings |
+| Third-party audits | None performed |
+
+## 2. What is implemented
+
+### Secure credential storage
+
+`lib/storage.ts` wraps `expo-secure-store` in `safeGetItem` / `safeSetItem` / `safeDeleteItem`,
+which swallow platform errors instead of crashing. The following live in the platform keychain
+or keystore, not in plain files:
+
+- `hv_user_profile` — the user profile JSON
+- `hv_biometric_enabled`, `hv_app_lock_enabled` — feature flags
+- the derived device ID
+
+This is the strongest data protection in the app. It relies entirely on the OS keychain; no
+application-level encryption is layered on top.
+
+### Biometric authentication
+
+`AuthService` implements `isBiometricAvailable()`, `authenticateWithBiometrics()`,
+`enableBiometricAuth()`, `enableAppLock()`, and `authenticateForApp()` on top of
+`expo-local-authentication`. 15 integration tests in `__tests__/integration/authFlow.test.tsx`
+cover the success, failure, and error paths against the real service.
+
+### Log redaction
+
+`lib/logger.ts` exports `redact()` and `isSensitiveKey()`, applied centrally in
+`createLogEntry()` so no call site can bypass it. It:
+
+- replaces values whose key matches a credential pattern (`password`, `token`, `apiKey`,
+  `authorization`, `cookie`, `dsn`, `pin`, `otp`, `cvv`, `cardNumber`, `ssn`, …) with
+  `[redacted]`, matching case-insensitively so `apiKey`, `API_KEY`, and `api_key` are all caught
+- truncates strings longer than 256 characters
+- caps recursion at depth 4 and arrays at 50 entries
+- breaks cycles instead of recursing forever
+- reduces `Error` objects to `{ name, message }`, dropping the stack
+
+Redaction applies in development as well as release builds, so a debuggable build is not a way
+to leak what a release build would not. 12 tests in `__tests__/unit/logger.test.ts` cover the
+behaviour, including the circular-reference and depth-cap cases.
+
+> [!NOTE]
+> This is a meaningful improvement but not a guarantee. A secret logged under a non-obvious
+> key (`authHeader`, `bearer`) will not match the pattern list. Treat the list as a
+> backstop, not a substitute for not logging secrets at all.
+
+### Complete account deletion
+
+`AuthService.deleteProfile(dbId?)` calls `deleteUserCascade` in `lib/database/database.ts`,
+which destroys the `users` row and every dependent record (tasks, habits and their entries,
+health metrics, finance transactions, goals, AI messages, settings) in one database write, then
+clears the SecureStore profile. Logging out from the settings screen runs this path, so
+"delete my data" actually deletes it rather than leaving orphaned rows behind.
+
+### No network surface
+
+The app contains no `fetch` to a remote host and no analytics. The only outbound-capable code
+is `sentry-expo`, imported by `lib/logger.ts` inside a `try/catch`, which activates solely if
+`EXPO_PUBLIC_SENTRY_DSN` is set. **It is unset, so no data leaves the device.** When it is set,
+only redacted `ERROR` and `WARN` entries are sent, and only from release builds.
+
+### Local-only data
+
+`.env.example` previously advertised `EXPO_PUBLIC_OPENAI_API_KEY`, `EXPO_PUBLIC_ETHEREUM_RPC_URL`,
+and similar variables that no code ever read. **They have been removed.** The file now documents
+only `EXPO_PUBLIC_SENTRY_DSN` as the single variable that changes data flow, plus commented-out
+developer-tooling entries. A template that invites a developer to paste a real API key into a
+file the app ignores is a liability, not a convenience.
+
+## 3. What is not implemented
+
+- **No encryption of the SQLite database.** All 12 tables are plaintext.
+- **No certificate pinning**, and no `expo-ssl-pinning` entry in `app.json`.
+- **No Android code obfuscation.** `proguard-rules.pro` exists but is never copied into a
+  generated `android/app/`, because no `android/` directory is committed.
+- **No jailbreak or root detection.**
+- **No screenshot protection** — no `FLAG_SECURE`, no screen-capture blocking.
+- **No data export encryption.** `exportUserData()` returns plaintext JSON.
+- **No `android:allowBackup="false"`** in a committed manifest, because no `android/` directory
+  is committed. This matters: on Android, app data may be included in cloud backups.
+- **The advisory audit does not gate merges.** `pnpm audit` runs in CI with
+  `continue-on-error: true`, so a high-severity advisory is reported but cannot block an
+  unrelated fix.
+
+## 4. Threat model
+
+Realistic threats for an offline-first local app, in rough order of likelihood.
+
+| Threat | Current mitigation |
+| :-- | :-- |
+| Someone with the unlocked device reads the data | App lock and biometrics are **opt-in**; the SQLite database is plaintext |
+| A malicious app reads AsyncStorage | Depends on OS sandboxing and, on Android, app-level backup configuration |
+| Lost or stolen device | Keychain-protected items are protected by the OS passcode or biometric; SQLite is not |
+| Supply-chain compromise | `pnpm install --frozen-lockfile` in CI; Dependabot tracks updates; an advisory `pnpm audit` job reports vulnerabilities |
+| Data exfiltration via Sentry | Only if someone sets `EXPO_PUBLIC_SENTRY_DSN`; payloads are redacted first |
+| Log leakage | Payloads are redacted and truncated by `redact()`; logs are still readable via `adb logcat` on a debuggable build |
+| Orphaned user data after deletion | Closed — `deleteUserCascade` removes all dependent rows |
+
+## 5. Reporting a vulnerability
+
+There is no security contact address configured for this project, and no published PGP key. The
+previous version of this file listed `security@hyperverse.app`; that address is not associated
+with this repository.
+
+Until a real channel exists, report through **GitHub's private vulnerability reporting** on the
+repository, which is enabled by default on GitHub repositories. If that is unavailable, open a
+regular issue describing the issue **without** exploit details or real user data.
+
+Please do not open a public issue containing a working exploit for an unfixed vulnerability.
+
+**What to include:** affected version or commit, reproduction steps, impact assessment, and
+whether user data is exposed.
+
+> [!WARNING]
+> No response time is committed to, because there is no security team. Treat this as a
+> best-effort channel. The project has a single maintainer.
+
+## 6. Hardening checklist
+
+Done since the previous revision:
+
+- [x] Drop the `is_encrypted` column (schema v2) rather than leave it implying encryption
+- [x] Redact user data in `lib/logger.ts`
+- [x] Implement `deleteProfile()` so it removes database rows, not just the SecureStore entry
+- [x] Add an advisory `pnpm audit` job to CI
+- [x] Remove the `EXPO_PUBLIC_OPENAI_API_KEY` and RPC entries from `.env.example`
+- [x] Add `typecheck` and check-only `lint` to CI so a regression cannot merge
+
+Still open, ordered by value:
+
+- [ ] Encrypt the SQLite database
+- [ ] Make app lock mandatory on first launch rather than opt-in
+- [ ] Add `android:allowBackup="false"` to the generated Android manifest
+- [ ] Add a threat-model exercise or external review; the table above is self-assessed
+- [ ] Decide whether to keep `sentry-expo`; if kept, document the telemetry it introduces
+- [ ] Document the minimum supported iOS and Android versions; `app.json` sets neither, and no
+      native project is committed
+- [ ] Consider making the dependency audit blocking once the advisory count reaches zero
 
 ---
 
-**Thank you for helping keep HyperVerse secure! 🛡️**
+**Status** `pre-release` · **verified** `2026-09-29` · [README](README.md) ·
+[Architecture §8](ARCHITECTURE.md#8-storage-boundaries) ·
+[Technical debt](ROADMAP_V2.md)
+
+[Edit this page](https://github.com/JahanzaibJameel/HyperVerse/blob/main/SECURITY.md) ·
+[Open an issue](https://github.com/JahanzaibJameel/HyperVerse/issues/new)
