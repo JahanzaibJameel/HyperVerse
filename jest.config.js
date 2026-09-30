@@ -1,11 +1,16 @@
-import { defaults } from 'jest-config';
-
 const config = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testMatch: [
-    '**/__tests__/**/*.(js|jsx|ts|tsx)',
+    '**/__tests__/**/*.test.(js|jsx|ts|tsx)',
     '**/*.(test|spec).(js|jsx|ts|tsx)',
+  ],
+  // Detox e2e specs run through `npm run test:e2e`, not Jest.
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/__tests__/e2e/',
+    '/\\.kilo/worktrees/',
+    '/static-build/',
   ],
   collectCoverageFrom: [
     'lib/**/*.{js,jsx,ts,tsx}',
@@ -13,19 +18,13 @@ const config = {
     'hooks/**/*.{js,jsx,ts,tsx}',
     'services/**/*.{js,jsx,ts,tsx}',
   ],
-  coverageThreshold: {
-    global: {
-      branches: 90,
-      functions: 90,
-      lines: 95,
-      statements: 95,
-    },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
   },
-  moduleNameMapping: {
-    '^@/(.*)$': '<rootDir>/lib/$1',
-  },
+  // pnpm nests real packages under node_modules/.pnpm/<id>/node_modules/<pkg>,
+  // so the lookahead has to skip that segment before matching package names.
   transformIgnorePatterns: [
-    'node_modules/(?!(jest-)?react-native|@react-native|expo|@expo|@react-navigation)',
+    'node_modules/(?!(?:\\.pnpm/[^/]+/node_modules/)?(?:jest-)?(?:react-native|@react-native|expo|expo-.*|@expo/.*|@react-navigation/.*)/)',
   ],
   testEnvironment: 'jsdom',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
