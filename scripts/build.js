@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { spawn } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const { Readable } = require("stream");
 const { pipeline } = require("stream/promises");
 
@@ -67,10 +67,10 @@ function getDeploymentDomain() {
     return stripProtocol(process.env.EXPO_PUBLIC_DOMAIN);
   }
 
-  console.error(
-    "ERROR: No deployment domain found. Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN",
+  console.log(
+    "WARNING: No deployment domain found. Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN. Falling back to localhost for local builds.",
   );
-  process.exit(1);
+  return "localhost";
 }
 
 function prepareDirectories(timestamp) {
@@ -127,6 +127,43 @@ function getExpoPublicReplId() {
   return process.env.REPL_ID || process.env.EXPO_PUBLIC_REPL_ID;
 }
 
+function isCommandAvailable(command) {
+  try {
+    const result = spawnSync(command, ["--version"], {
+      stdio: "ignore",
+      shell: true,
+    });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The project declares pnpm, but the build must also work where only npm is
+ * installed. `pnpm exec <cmd>` and `npm exec <cmd>` behave the same here.
+ */
+function resolvePackageManager() {
+  if (process.env.PACKAGE_MANAGER) {
+    return process.env.PACKAGE_MANAGER;
+  }
+
+  const candidates =
+    process.platform === "win32"
+      ? ["pnpm", "npm", "yarn"]
+      : ["pnpm", "npm", "yarn"];
+
+  for (const candidate of candidates) {
+    if (isCommandAvailable(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    "No supported package manager found. Install pnpm (recommended), npm, or yarn.",
+  );
+}
+
 async function startMetro(expoPublicDomain, expoPublicReplId) {
   const isRunning = await checkMetroHealth();
   if (isRunning) {
@@ -146,23 +183,27 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
     console.log(`Setting EXPO_PUBLIC_REPL_ID=${expoPublicReplId}`);
   }
 
+  const packageManager = resolvePackageManager();
+  console.log(`Using package manager: ${packageManager}`);
+
   metroProcess = spawn(
-    "pnpm",
-    [
-      "exec",
-      "expo",
-      "start",
-      "--no-dev",
-      "--minify",
-      "--localhost",
-    ],
+    packageManager,
+    ["exec", "expo", "start", "--no-dev", "--minify", "--localhost"],
     {
       stdio: ["ignore", "pipe", "pipe"],
       detached: false,
       cwd: projectRoot,
       env,
+      shell: process.platform === "win32",
     },
   );
+
+  metroProcess.on("error", (error) => {
+    console.error(
+      `Failed to start Metro via "${packageManager}": ${error.message}. ` +
+        "Ensure the package manager is installed and available on PATH.",
+    );
+  });
 
   if (metroProcess.stdout) {
     metroProcess.stdout.on("data", (data) => {
