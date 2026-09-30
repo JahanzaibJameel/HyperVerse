@@ -1,17 +1,18 @@
 import { BlurView } from "expo-blur";
 import React from "react";
-import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+import { Platform, Pressable, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
 interface GlowCardProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   glowColor?: string;
   intensity?: "low" | "medium" | "high";
+  onPress?: () => void;
 }
 
-export function GlowCard({ children, style, glowColor, intensity = "medium" }: GlowCardProps) {
+export function GlowCard({ children, style, glowColor, intensity = "medium", onPress }: GlowCardProps) {
   const colors = useColors();
   const glow = glowColor || colors.cyan;
   const glowAlpha = intensity === "low" ? "1a" : intensity === "medium" ? "33" : "55";
@@ -33,8 +34,11 @@ export function GlowCard({ children, style, glowColor, intensity = "medium" }: G
         }
       : {};
 
+  const Card = onPress ? Pressable : View;
+
   const Inner = (
-    <View
+    <Card
+      onPress={onPress}
       style={[
         styles.card,
         {
@@ -48,7 +52,7 @@ export function GlowCard({ children, style, glowColor, intensity = "medium" }: G
       ]}
     >
       {children}
-    </View>
+    </Card>
   );
 
   if (Platform.OS === "ios") {
