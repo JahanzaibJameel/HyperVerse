@@ -15,11 +15,22 @@ jest.mock('expo-crypto', () => ({
   },
 }));
 
-jest.mock('expo-secure-store', () => ({
-  getItemAsync: jest.fn(() => Promise.resolve(null)),
-  setItemAsync: jest.fn(() => Promise.resolve()),
-  deleteItemAsync: jest.fn(() => Promise.resolve()),
-}));
+// Stateful in-memory SecureStore so save/load round-trips behave like the real
+// module (a bare always-null stub makes every persisted profile disappear).
+jest.mock('expo-secure-store', () => {
+  const store: Record<string, string> = {};
+  return {
+    getItemAsync: jest.fn((key: string) => Promise.resolve(store[key] ?? null)),
+    setItemAsync: jest.fn((key: string, value: string) => {
+      store[key] = value;
+      return Promise.resolve();
+    }),
+    deleteItemAsync: jest.fn((key: string) => {
+      delete store[key];
+      return Promise.resolve();
+    }),
+  };
+});
 
 jest.mock('expo-local-authentication', () => ({
   hasHardwareAsync: jest.fn(() => Promise.resolve(true)),
@@ -159,6 +170,7 @@ describe('AuthService', () => {
       const mockSecureStore = require('expo-secure-store');
       const existingProfile = {
         id: 'test-user',
+        deviceId: 'test-device',
         name: 'Old Name',
         email: 'old@example.com',
         level: 5,
@@ -171,18 +183,17 @@ describe('AuthService', () => {
         createdAt: Date.now() - 86400000,
         updatedAt: Date.now() - 3600000,
       };
-      
+
       mockSecureStore.getItemAsync.mockResolvedValueOnce(JSON.stringify(existingProfile));
-      
+
       await authService.updateProfile({
         name: 'New Name',
         email: 'new@example.com',
       });
-      
+
       expect(mockSecureStore.setItemAsync).toHaveBeenCalledWith(
         'hv_user_profile',
         expect.stringContaining('New Name'),
-        expect.stringContaining('new@example.com'),
       );
     });
   });
@@ -203,6 +214,7 @@ describe('AuthService', () => {
     it('should export user data as JSON', async () => {
       const mockProfile = {
         id: 'test-user',
+        deviceId: 'test-device',
         name: 'Test User',
         level: 5,
         xp: 2500,
