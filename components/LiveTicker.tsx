@@ -37,7 +37,7 @@ export function LiveTicker() {
     );
     anim.start();
     return () => anim.stop();
-  }, [width]);
+  }, [width, translateX]);
 
   const items = [...TICKERS, ...TICKERS];
 
