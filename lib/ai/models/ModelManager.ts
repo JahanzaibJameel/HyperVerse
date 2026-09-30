@@ -1,5 +1,4 @@
 import * as FileSystem from 'expo-file-system';
-import * as Crypto from 'expo-crypto';
 import { pipeline, env } from '@xenova/transformers';
 
 export interface AIModel {
@@ -100,7 +99,7 @@ class ModelManager {
       for (const config of configs) {
         this.models.set(config.id, config);
       }
-    } catch (error) {
+    } catch {
       console.log('No existing model configs found');
     }
   }
@@ -323,7 +322,7 @@ class ModelManager {
         used: totalSize,
         available: freeSpace,
       };
-    } catch (error) {
+    } catch {
       return { used: 0, available: 0 };
     }
   }
