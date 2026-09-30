@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -12,89 +12,240 @@ import {
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GlowCard } from "@/components/GlowCard";
-import { useApp } from "@/context/AppContext";
+import { useAuthStore } from "@/lib/stores/authStore";
+import { AIRepository } from "@/lib/database/repositories/AIRepository";
+import { TaskRepository } from "@/lib/database/repositories/TaskRepository";
+import { HabitRepository } from "@/lib/database/repositories/HabitRepository";
+import { HealthRepository } from "@/lib/database/repositories/HealthRepository";
+import { FinanceRepository } from "@/lib/database/repositories/FinanceRepository";
+import AIService from "@/lib/ai/AIService";
 import { useColors } from "@/hooks/useColors";
+import type { AIMessage } from "@/lib/database/models/AIMessage";
 
+const SESSION_ID = "default";
+
+/** Prompts chosen to match the intents the insight engine actually answers. */
 const QUICK_PROMPTS = [
-  "Optimize my morning routine",
-  "Analyze my finances",
-  "Plan my workout",
-  "Check IoT status",
-  "Virtual Twin report",
-  "AR city update",
+  "How am I doing?",
+  "Analyse my finances",
+  "What should I do today?",
+  "How did I sleep?",
+  "Which tasks are overdue?",
+  "How are my habits?",
 ];
-
-const MEMORY_ITEMS = [
-  { key: "Preference", value: "Morning workouts before 8am", icon: "brain" as const },
-  { key: "Goal", value: "Reach Level 10 by end of month", icon: "flag" as const },
-  { key: "Pattern", value: "Productivity peaks 9-11am daily", icon: "chart-line" as const },
-  { key: "Context", value: "Working on crypto portfolio", icon: "ethereum" as const },
-];
-
-const VIRTUAL_TWIN_DATA = [
-  { label: "Physical Sync", value: "94%", color: "#00ff9d" },
-  { label: "Finance Twin", value: "88%", color: "#ffb800" },
-  { label: "Social Twin", value: "71%", color: "#7c3aed" },
-  { label: "AR Presence", value: "82%", color: "#00d4ff" },
-];
-
-const AI_RESPONSES: Record<string, string> = {
-  "Optimize my morning routine":
-    "Neural analysis complete. Based on your 7.4h sleep data and cortisol peak window (7-9 AM): \n\n• 6:30 — Wake + cold exposure (2 min)\n• 6:45 — Meditation (10 min) +75 XP\n• 7:00 — HIIT training (25 min) +150 XP\n• 7:30 — High-protein breakfast\n• 8:00 — Deep focus block\n\nThis sequence optimizes for your biometric patterns. Estimated daily XP gain: +320.",
-  "Analyze my finances":
-    "Financial quantum scan complete:\n\n• Net worth: $24,680 (+13% MoM)\n• Savings rate: 62% — exceptional\n• Crypto portfolio: outperforming S&P by 4.2%\n• 3 unused subscriptions found (-$57/mo)\n\nRecommendation: Allocate 15% of next paycheck to index funds. 90-day projection: +$8,400 at current trajectory.",
-  "Plan my workout":
-    "Recovery score: 84/100. Today is ideal for high intensity.\n\nSuggested session:\n• Warm-up (5 min)\n• Chest + Triceps compound lifts (20 min)\n• HIIT intervals × 8 rounds (15 min)\n• Cool-down stretch (5 min)\n\nEst. burn: 520 kcal | +200 XP | Advances 'Iron Will' NFT by 4%",
-  "Check IoT status":
-    "Smart environment scan:\n\n• 8/8 devices online\n• Thermostat: 72°F (auto-optimized)\n• Air quality: Excellent (AQI 18)\n• Energy usage: 12% below baseline\n• Coffee pre-programmed: 6:45 AM\n• Security: Armed, all zones clear\n\nPrediction: Pre-heating home now for arrival in 22 min.",
-  "Virtual Twin report":
-    "Virtual Twin simulation complete:\n\n• Physical sync: 94% accuracy\n• Finance twin divergence: -2.3% (minor)\n• Social graph match: 71%\n• AR presence calibrated\n\nLife simulation for next 30 days predicts:\n• XP gain: +12,400\n• Net worth: +$3,200\n• Health score improvement: +8 points\n\nOptimization opportunities detected: 3",
-  "AR city update":
-    "AR city mesh status:\n\n• 4 objects in your proximity radius\n• Legendary HV Token at 3m — collect now!\n• Active raid: Nexus Gate (12m) — 24 participants\n• Your global rank: #3 (↑ from #5)\n• Seasonal challenge: 68% complete\n\nTime-sensitive: Token expires in 2h 14m.",
-};
 
 export default function AIScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { aiMessages, addMessage, clearMessages, user, health, finance } = useApp();
+  const { user } = useAuthStore();
+  const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [tab, setTab] = useState<"chat" | "memory" | "twin">("chat");
   const [voiceActive, setVoiceActive] = useState(false);
+  const [contextStats, setContextStats] = useState({
+    healthRecords: 0,
+    transactions: 0,
+    goals: 0,
+    openTasks: 0,
+    overdueTasks: 0,
+    habitCount: 0,
+    income: 0,
+    expenses: 0,
+    steps: 0,
+    stepsGoal: 0,
+    sleep: 0,
+  });
   const flatRef = useRef<FlatList>(null);
 
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
+  const loadContextStats = useCallback(async () => {
+    if (!user?.dbId) return;
+    try {
+      const [metrics, finance, goals, tasks, habits] = await Promise.all([
+        HealthRepository.findLatest(user.dbId),
+        FinanceRepository.summary(user.dbId),
+        FinanceRepository.findActiveGoals(user.dbId),
+        TaskRepository.findByUser(user.dbId),
+        HabitRepository.findActive(user.dbId),
+      ]);
+      const open = tasks.filter((t) => t.status === 'todo' || t.status === 'in_progress');
+      setContextStats({
+        healthRecords: metrics ? 1 : 0,
+        transactions: finance.income > 0 || finance.expenses > 0 ? 1 : 0,
+        goals: goals.length,
+        openTasks: open.length,
+        overdueTasks: open.filter((t) => t.isOverdue).length,
+        habitCount: habits.length,
+        income: finance.income,
+        expenses: finance.expenses,
+        steps: metrics?.steps ?? 0,
+        stepsGoal: metrics?.stepsGoal ?? 0,
+        sleep: metrics?.sleepHours ?? 0,
+      });
+    } catch (error) {
+      console.error("Failed to load AI context stats", error);
+    }
+  }, [user?.dbId]);
+
+  /** Context rows for the Data Context tab, built from real records. */
+  const memoryItems = (() => {
+    const items: { key: string; value: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [];
+
+    if (contextStats.openTasks > 0) {
+      items.push({
+        key: "Open tasks",
+        value:
+          contextStats.overdueTasks > 0
+            ? `${contextStats.openTasks} open, ${contextStats.overdueTasks} overdue`
+            : `${contextStats.openTasks} open, none overdue`,
+        icon: "clipboard-list-outline",
+      });
+    }
+    if (contextStats.habitCount > 0) {
+      items.push({
+        key: "Habits tracked",
+        value: `${contextStats.habitCount} active`,
+        icon: "target",
+      });
+    }
+    if (contextStats.healthRecords > 0) {
+      items.push({
+        key: "Latest health",
+        value: `${contextStats.steps.toLocaleString()} steps, ${contextStats.sleep.toFixed(1)}h sleep`,
+        icon: "heart-pulse",
+      });
+    }
+    if (contextStats.income > 0 || contextStats.expenses > 0) {
+      items.push({
+        key: "Cash flow",
+        value: `$${contextStats.income.toLocaleString()} in, $${contextStats.expenses.toLocaleString()} out`,
+        icon: "cash-multiple",
+      });
+    }
+    if (contextStats.goals > 0) {
+      items.push({
+        key: "Savings goals",
+        value: `${contextStats.goals} active`,
+        icon: "flag-outline",
+      });
+    }
+    if (user?.streak) {
+      items.push({ key: "Streak", value: `${user.streak} days`, icon: "fire" });
+    }
+
+    return items;
+  })();
+
+  /** Headline numbers for the Profile tab. */
+  const profileStats = [
+    { label: "Level", value: String(user?.level || 1), color: colors.cyan },
+    { label: "Streak", value: `${user?.streak || 0}d`, color: colors.warning },
+    { label: "Tokens", value: (user?.tokens || 0).toLocaleString(), color: colors.purple },
+    { label: "Tasks open", value: String(contextStats.openTasks), color: colors.green },
+  ];
+
+  const profileRows = [
+    { label: "Open tasks", value: String(contextStats.openTasks), color: colors.green },
+    { label: "Overdue tasks", value: String(contextStats.overdueTasks), color: contextStats.overdueTasks > 0 ? colors.pink : colors.mutedForeground },
+    { label: "Active habits", value: String(contextStats.habitCount), color: colors.purple },
+    { label: "Savings goals", value: String(contextStats.goals), color: colors.cyan },
+    { label: "Health records", value: contextStats.healthRecords > 0 ? "Present" : "None yet", color: colors.green },
+  ];
+
+  const loadMessages = useCallback(async () => {
+    if (!user?.dbId) {
+      setAiMessages([]);
+      return;
+    }
+    try {
+      const records = await AIRepository.findBySession(user.dbId, SESSION_ID);
+      setAiMessages(records);
+    } catch (error) {
+      console.error("Failed to load AI messages", error);
+    }
+  }, [user?.dbId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadMessages();
+      loadContextStats();
+    }, [loadMessages, loadContextStats])
+  );
+
+  const clearMessages = async () => {
+    if (!user?.dbId) return;
+    try {
+      await AIRepository.clearHistory(user.dbId);
+      await AIRepository.create({
+        userId: user.dbId,
+        sessionId: SESSION_ID,
+        role: 'assistant',
+        content: 'Neural link re-established. How can I assist?',
+      });
+      await loadMessages();
+    } catch (error) {
+      console.error("Failed to clear messages", error);
+    }
+  };
+
   const sendMessage = async (text: string) => {
-    if (!text.trim() || isTyping) return;
-    const userMsg = {
-      id: Date.now().toString(),
-      role: "user" as const,
-      content: text.trim(),
-      timestamp: Date.now(),
-    };
-    addMessage(userMsg);
+    if (!text.trim() || isTyping || !user?.dbId) return;
+
     setInput("");
     setIsTyping(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000));
+    try {
+      await AIRepository.create({
+        userId: user.dbId,
+        sessionId: SESSION_ID,
+        role: 'user',
+        content: text.trim(),
+      });
+      await loadMessages();
 
-    const response =
-      AI_RESPONSES[text.trim()] ||
-      `Neural processing complete. I've analyzed your biometric context (HR: ${health.heartRate}bpm, Sleep: ${health.sleep}h) alongside your financial position ($${finance.balance.toLocaleString()} net worth) and AR environment. \n\nFor "${text.trim()}" — I recommend focusing on your morning routine optimization and increasing daily XP acquisition. Want me to generate a detailed action plan?`;
+      const response = await AIService.getInstance().sendMessage(text.trim(), SESSION_ID, {
+        id: user.dbId,
+        name: user.name,
+        level: user.level,
+        streak: user.streak,
+      });
 
-    addMessage({
-      id: (Date.now() + 1).toString(),
-      role: "assistant" as const,
-      content: response,
-      timestamp: Date.now(),
-    });
-    setIsTyping(false);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await AIRepository.create({
+        userId: user.dbId,
+        sessionId: SESSION_ID,
+        role: 'assistant',
+        content: response.message.content,
+        modelUsed: response.modelUsed,
+        tokensUsed: response.tokensUsed,
+      });
+      await loadMessages();
+    } catch (error) {
+      console.error("Failed to send message", error);
+
+      // Surface the failure rather than silently dropping the user's message.
+      try {
+        await AIRepository.create({
+          userId: user.dbId,
+          sessionId: SESSION_ID,
+          role: 'assistant',
+          content:
+            'I could not generate a response just now. Your message was saved — please try again.',
+        });
+        await loadMessages();
+      } catch (persistError) {
+        console.error("Failed to persist error notice", persistError);
+      }
+    } finally {
+      setIsTyping(false);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
   };
 
   const handleVoice = () => {
@@ -128,7 +279,7 @@ export default function AIScreen() {
             </View>
           </View>
         </View>
-        <TouchableOpacity onPress={clearMessages}>
+        <TouchableOpacity onPress={clearMessages} accessibilityLabel="Clear conversation" accessibilityRole="button">
           <MaterialCommunityIcons name="refresh" size={20} color={colors.mutedForeground} />
         </TouchableOpacity>
       </View>
@@ -213,33 +364,44 @@ export default function AIScreen() {
 
       {tab === "memory" && (
         <ScrollView contentContainerStyle={styles.memoryContainer} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.memoryTitle, { color: colors.foreground }]}>CONTEXTUAL MEMORY</Text>
-          <Text style={[styles.memorySub, { color: colors.mutedForeground }]}>AI learns from your patterns over time</Text>
+          <Text style={[styles.memoryTitle, { color: colors.foreground }]}>DATA CONTEXT</Text>
+          <Text style={[styles.memorySub, { color: colors.mutedForeground }]}>
+            What the assistant can currently reason about
+          </Text>
 
-          {MEMORY_ITEMS.map((m, i) => (
-            <GlowCard key={i} glowColor={colors.purple} style={styles.memoryCard}>
-              <View style={styles.memoryRow}>
-                <View style={[styles.memoryIcon, { backgroundColor: colors.purple + "22" }]}>
-                  <MaterialCommunityIcons name={m.icon} size={18} color={colors.purple} />
-                </View>
-                <View style={styles.memoryInfo}>
-                  <Text style={[styles.memoryKey, { color: colors.mutedForeground }]}>{m.key}</Text>
-                  <Text style={[styles.memoryValue, { color: colors.foreground }]}>{m.value}</Text>
-                </View>
-              </View>
+          {memoryItems.length === 0 ? (
+            <GlowCard glowColor={colors.purple} style={styles.memoryCard}>
+              <Text style={[styles.memoryValue, { color: colors.mutedForeground }]}>
+                No data yet. Add tasks, habits, health metrics, or transactions and they will appear
+                here as context the assistant can use.
+              </Text>
             </GlowCard>
-          ))}
+          ) : (
+            memoryItems.map((m, i) => (
+              <GlowCard key={i} glowColor={colors.purple} style={styles.memoryCard}>
+                <View style={styles.memoryRow}>
+                  <View style={[styles.memoryIcon, { backgroundColor: colors.purple + "22" }]}>
+                    <MaterialCommunityIcons name={m.icon} size={18} color={colors.purple} />
+                  </View>
+                  <View style={styles.memoryInfo}>
+                    <Text style={[styles.memoryKey, { color: colors.mutedForeground }]}>{m.key}</Text>
+                    <Text style={[styles.memoryValue, { color: colors.foreground }]}>{m.value}</Text>
+                  </View>
+                </View>
+              </GlowCard>
+            ))
+          )}
 
           <GlowCard glowColor={colors.cyan} style={styles.memoryCard}>
             <View style={styles.cardHeader}>
               <MaterialCommunityIcons name="chart-line" size={16} color={colors.cyan} />
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>LEARNING STATS</Text>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>DATA COVERAGE</Text>
             </View>
             {[
-              { label: "Interactions analyzed", value: "1,247" },
-              { label: "Patterns detected", value: "38" },
-              { label: "Personalization score", value: "91%" },
-              { label: "Prediction accuracy", value: "84%" },
+              { label: "Messages exchanged", value: String(aiMessages.length) },
+              { label: "Health records", value: String(contextStats.healthRecords) },
+              { label: "Transactions recorded", value: String(contextStats.transactions) },
+              { label: "Active goals", value: String(contextStats.goals) },
             ].map((s, i) => (
               <View key={i} style={[styles.statRow, { borderBottomColor: colors.border, borderBottomWidth: i < 3 ? 1 : 0 }]}>
                 <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
@@ -252,8 +414,10 @@ export default function AIScreen() {
 
       {tab === "twin" && (
         <ScrollView contentContainerStyle={styles.memoryContainer} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.memoryTitle, { color: colors.foreground }]}>VIRTUAL TWIN</Text>
-          <Text style={[styles.memorySub, { color: colors.mutedForeground }]}>Digital simulation of your life</Text>
+          <Text style={[styles.memoryTitle, { color: colors.foreground }]}>YOUR PROFILE</Text>
+          <Text style={[styles.memorySub, { color: colors.mutedForeground }]}>
+            A summary of what is on record for you
+          </Text>
 
           <GlowCard glowColor={colors.cyan} style={styles.memoryCard}>
             <View style={styles.twinHeader}>
@@ -261,14 +425,16 @@ export default function AIScreen() {
                 <MaterialCommunityIcons name="account-circle" size={40} color={colors.cyan} />
               </View>
               <View>
-                <Text style={[styles.twinName, { color: colors.foreground }]}>{user.name}</Text>
-                <Text style={[styles.twinSub, { color: colors.cyan }]}>Digital Twin v{user.level}.0</Text>
-                <Text style={[styles.twinSync, { color: colors.mutedForeground }]}>Last synced: 2 min ago</Text>
+                <Text style={[styles.twinName, { color: colors.foreground }]}>{user?.name || "User"}</Text>
+                <Text style={[styles.twinSub, { color: colors.cyan }]}>Level {user?.level || 1}</Text>
+                <Text style={[styles.twinSync, { color: colors.mutedForeground }]}>
+                  {user?.streak || 0} day streak
+                </Text>
               </View>
             </View>
 
             <View style={styles.twinStats}>
-              {VIRTUAL_TWIN_DATA.map((d, i) => (
+              {profileStats.map((d, i) => (
                 <View key={i} style={styles.twinStat}>
                   <Text style={[styles.twinStatVal, { color: d.color }]}>{d.value}</Text>
                   <Text style={[styles.twinStatLabel, { color: colors.mutedForeground }]}>{d.label}</Text>
@@ -279,17 +445,11 @@ export default function AIScreen() {
 
           <GlowCard glowColor={colors.purple} style={styles.memoryCard}>
             <View style={styles.cardHeader}>
-              <MaterialCommunityIcons name="crystal-ball" size={16} color={colors.purple} />
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>30-DAY SIMULATION</Text>
+              <MaterialCommunityIcons name="chart-timeline-variant" size={16} color={colors.purple} />
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>AT A GLANCE</Text>
             </View>
-            {[
-              { label: "XP gain projected", value: "+12,400 XP", color: colors.cyan },
-              { label: "Net worth change", value: "+$3,200", color: colors.green },
-              { label: "Health score", value: "+8 pts", color: colors.green },
-              { label: "NFTs to evolve", value: "2 pending", color: colors.warning },
-              { label: "AR rank prediction", value: "#1 possible", color: colors.purple },
-            ].map((s, i) => (
-              <View key={i} style={[styles.statRow, { borderBottomColor: colors.border, borderBottomWidth: i < 4 ? 1 : 0 }]}>
+            {profileRows.map((s, i) => (
+              <View key={i} style={[styles.statRow, { borderBottomColor: colors.border, borderBottomWidth: i < profileRows.length - 1 ? 1 : 0 }]}>
                 <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{s.label}</Text>
                 <Text style={[styles.statVal, { color: s.color }]}>{s.value}</Text>
               </View>
