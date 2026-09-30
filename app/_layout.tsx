@@ -5,7 +5,6 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
@@ -16,52 +15,45 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppProvider } from '@/context/AppContext';
 import { useAuthStore } from '@/lib/stores/authStore';
-import { useThemeStore } from '@/lib/stores/themeStore';
 import AuthService from '@/lib/services/AuthService';
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      cacheTime: 1000 * 60 * 10, // 10 minutes
-      retry: 3,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
 function RootLayoutNav() {
   const [isInitialized, setIsInitialized] = useState(false);
-  const { user, setUser, setLoading } = useAuthStore();
+  const { setUser, setLoading } = useAuthStore();
 
   useEffect(() => {
-    initializeApp();
-  }, []);
+    let cancelled = false;
 
-  const initializeApp = async () => {
-    try {
-      setLoading(true);
-      
-      // Initialize authentication
-      const authService = AuthService.getInstance();
-      const profile = await authService.loadUserProfile();
-      
-      if (profile) {
-        setUser(profile);
+    const initializeApp = async () => {
+      try {
+        setLoading(true);
+
+        const profile = await AuthService.getInstance().loadUserProfile();
+
+        if (!cancelled && profile) {
+          setUser(profile);
+        }
+      } catch (error) {
+        console.error('App initialization failed:', error);
+      } finally {
+        if (!cancelled) {
+          // The splash screen is released even when the profile read failed, so a
+          // SecureStore or SQLite error lands the user on the login screen
+          // instead of a permanently blank screen.
+          setIsInitialized(true);
+          setLoading(false);
+        }
       }
+    };
 
-      // Initialize other services
-      // await initializeOtherServices();
-      
-      setIsInitialized(true);
-    } catch (error) {
-      console.error('App initialization failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    initializeApp();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setUser, setLoading]);
 
   if (!isInitialized) {
     return null; // Show splash screen
@@ -91,8 +83,6 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  const { themeMode, accentColor } = useThemeStore();
-
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
@@ -106,15 +96,13 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <KeyboardProvider>
-              <AppProvider>
-                <RootLayoutNav />
-              </AppProvider>
-            </KeyboardProvider>
-          </GestureHandlerRootView>
-        </QueryClientProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <KeyboardProvider>
+            <AppProvider>
+              <RootLayoutNav />
+            </AppProvider>
+          </KeyboardProvider>
+        </GestureHandlerRootView>
       </ErrorBoundary>
     </SafeAreaProvider>
   );
