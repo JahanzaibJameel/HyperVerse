@@ -1,11 +1,6 @@
-import { by, device, element, expect } from 'detox';
-import { reloadApp } from 'detox-expo-helpers';
+import { by, device, element, expect, waitFor } from 'detox';
 
 describe('Authentication Flow', () => {
-  beforeAll(async () => {
-    await reloadApp();
-  });
-
   beforeEach(async () => {
     await device.reloadReactNative();
   });
@@ -45,7 +40,7 @@ describe('Authentication Flow', () => {
   });
 
   it('should handle optional email field', async () => {
-    const nameInput = element.by.id('name-input');
+    const nameInput = element(by.id('name-input'));
     const emailInput = element(by.id('email-input'));
     const getStartedButton = element(by.id('get-started-button'));
     
@@ -84,10 +79,6 @@ describe('Authentication Flow', () => {
 });
 
 describe('Biometric Authentication', () => {
-  beforeAll(async () => {
-    await reloadApp();
-  });
-
   beforeEach(async () => {
     await device.reloadReactNative();
   });
@@ -106,8 +97,7 @@ describe('Biometric Authentication', () => {
 
   it('should handle biometric authentication success', async () => {
     // Mock successful biometric authentication
-    await device.matchElement(by.text('Enable biometric authentication'))
-      .tap();
+    await element(by.text('Enable biometric authentication')).tap();
     
     // Should show success message
     await waitFor(element(by.text('Biometric authentication enabled')))
@@ -133,10 +123,6 @@ describe('Biometric Authentication', () => {
 });
 
 describe('Profile Management', () => {
-  beforeAll(async () => {
-    await reloadApp();
-  });
-
   beforeEach(async () => {
     await device.reloadReactNative();
   });
