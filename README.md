@@ -1,465 +1,276 @@
-# HyperVerse - Production-Ready Life OS
-
-HyperVerse is a **100% frontend, offline-first "life operating system"** built with React Native/Expo. All functionality, data, and intelligence runs entirely on the client device with no backend dependencies.
-
-## 🚀 Features
-
-### Core Functionality
-- **🆔 Local Authentication**: Device-based identity with biometric support
-- **📊 Task Management**: Full CRUD with priorities, categories, and XP rewards
-- **🎯 Habit Tracking**: Streak-based habit system with analytics
-- **💪 Health Monitoring**: Biometrics, workouts, sleep tracking, and insights
-- **💰 Finance Management**: Budget tracking, transaction management, and financial goals
-- **🤖 On-Device AI**: HyperAssist with local LLM and RAG capabilities
-- **🎨 Cyberpunk Design**: Modern glassmorphism UI with neon accents
-- **📱 Cross-Platform**: iOS, Android, and Web PWA support
-
-### Technical Highlights
-- **🔒 Privacy-First**: All data stored locally, encrypted at rest
-- **⚡ Instant Performance**: Sub-second startup with Hermes and Fabric
-- **🧠 Smart Intelligence**: Context-aware AI with vector search
-- **📦 Bundle Optimized**: < 4MB bundle size with lazy loading
-- **🧪 Comprehensive Testing**: 85%+ coverage with E2E automation
-- **🔄 CI/CD Pipeline**: Automated testing and deployment
-
-## 🏗️ Architecture
-
-### Technology Stack
-- **Framework**: React Native 0.81+ with Expo SDK 54+
-- **Language**: TypeScript 5.6+ with strict mode
-- **State Management**: Zustand + TanStack Query
-- **Database**: WatermelonDB + SQLite
-- **AI**: Transformers.js + LanceDB (on-device)
-- **Navigation**: Expo Router v4 (file-based)
-- **UI**: React Native Skia + Reanimated 4
-- **Testing**: Jest + React Native Testing Library + Detox
-
-### Data Flow
-```
-UI Components → React Hooks → Services → Repositories → Database
-     ↑                                                    ↓
-UI ← Zustand Store ← React Query Cache ← Local DB ← Device Storage
-```
-
-## 📦 Installation
-
-### Prerequisites
-- Node.js 20+ LTS
-- pnpm 8+
-- Expo CLI 54+
-- iOS Simulator (iOS development) or Android Emulator
-- Physical device for testing
-
-### Setup Commands
-
-```bash
-# Clone repository
-git clone https://github.com/your-org/hyperverse.git
-cd hyperverse
-
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
-
-# Run tests
-pnpm test
-
-# Build for production
-pnpm build
-```
-
-## 🧪 Development
-
-### Scripts
-```bash
-pnpm dev          # Start development server
-pnpm test         # Run unit tests
-pnpm test:e2e     # Run E2E tests
-pnpm test:coverage # Run tests with coverage
-pnpm lint         # Run linting
-pnpm lint:fix     # Fix linting issues
-pnpm typecheck    # Run TypeScript checking
-pnpm build        # Build for production
-pnpm storybook    # Start Storybook
-```
-
-### Environment Setup
-
-1. **Install Expo CLI**:
-   ```bash
-   npm install -g @expo/cli
-   ```
-
-2. **Setup Development Build**:
-   ```bash
-   expo prebuild --platform ios
-   expo prebuild --platform android
-   ```
-
-3. **AI Model Setup**:
-   - Models download automatically on first launch
-   - Default models: Gemma-2B-IT (LLM), MiniLM-L6-v2 (Embeddings)
-   - Models stored in `assets/ai-models/`
-
-## 📱 Platform Support
-
-### iOS
-- **Minimum Version**: iOS 14.0+
-- **Architecture**: ARM64 (required for on-device AI)
-- **Features**: Face ID, Touch ID, haptics, background processing
-
-### Android
-- **Minimum Version**: API Level 30 (Android 11)
-- **Architecture**: ARM64
-- **Features**: Biometric auth, background services, file system access
-
-### Web
-- **Browser Support**: Chrome 90+, Safari 14+, Firefox 88+
-- **PWA Features**: Offline support, installable, service worker
-- **Performance**: WebAssembly for AI models (where supported)
-
-## 🤖 AI Integration
-
-### HyperAssist Features
-- **Local Processing**: All AI inference runs on-device
-- **Context Awareness**: RAG pipeline with user data
-- **Multiple Models**: Support for different LLM models
-- **Privacy**: No data leaves device without consent
-- **Offline**: Full functionality without network
-
-### Model Management
-```typescript
-// Available models
-interface AIModel {
-  id: string;
-  name: string;
-  type: 'llm' | 'embedding';
-  size: number; // bytes
-  isDownloaded: boolean;
-  isActive: boolean;
-}
-```
-
-### Usage Example
-```typescript
-import AIService from '@/lib/ai/AIService';
-
-const aiService = AIService.getInstance();
-await aiService.initialize();
-
-// Send message with context
-const response = await aiService.sendMessage(
-  "What are my top priorities today?",
-  { includeContext: true, contextTypes: ['tasks', 'habits'] }
-);
-```
-
-## 🗄️ Data Architecture
-
-### Database Schema
-- **Users**: Profile, preferences, authentication
-- **Tasks**: Todo items with metadata and XP rewards
-- **Habits**: Recurring activities with streak tracking
-- **Health**: Biometrics, workouts, sleep data
-- **Finance**: Transactions, budgets, goals
-- **AI Messages**: Chat history with context
-- **Settings**: App configuration and preferences
-
-### Data Persistence
-```typescript
-// Local storage layers
-- AsyncStorage: Simple key-value data
-- SecureStore: Encrypted sensitive data
-- WatermelonDB: Structured relational data
-- FileSystem: AI models and large files
-```
-
-## 🧪 Testing
-
-### Test Coverage
-- **Unit Tests**: Business logic, services, utilities (85%+ target)
-- **Component Tests**: UI components with Storybook
-- **Integration Tests**: Data flow and API integration
-- **E2E Tests**: Complete user journeys
-
-### Running Tests
-```bash
-# All tests
-pnpm test
-
-# Watch mode
-pnpm test:watch
-
-# Coverage report
-pnpm test:coverage
-
-# E2E tests
-pnpm test:e2e
-```
-
-### Test Structure
-```
-__tests__/
-├── unit/           # Unit tests
-├── integration/    # Integration tests
-├── e2e/           # End-to-end tests
-└── __mocks__/     # Test mocks
-```
-
-## 🚀 Deployment
-
-### Build Process
-1. **Lint & Type Check**: Code quality validation
-2. **Unit Tests**: Automated testing
-3. **Bundle Creation**: Platform-specific builds
-4. **Asset Optimization**: Image and resource compression
-5. **AI Model Packaging**: Bundle models with app
-
-### Production Builds
-```bash
-# iOS
-pnpm build:ios
-
-# Android
-pnpm build:android
-
-# Web
-pnpm build:web
-```
-
-### CI/CD Pipeline
-- **Triggers**: Push to main/develop, pull requests
-- **Testing**: Automated test suite execution
-- **Building**: Multi-platform build generation
-- **Deployment**: Artifact upload and distribution
-- **Monitoring**: Build analysis and coverage reporting
-
-## 🔧 Configuration
-
-### Environment Variables
-```bash
-# Development
-EXPO_PUBLIC_DOMAIN=localhost
-EXPO_PUBLIC_REPL_ID=dev
-
-# Production
-EXPO_PUBLIC_DOMAIN=hyperverse.app
-EXPO_PUBLIC_REPL_ID=prod
-```
-
-### App Configuration
-```json
-{
-  "expo": {
-    "name": "HyperVerse",
-    "slug": "hyperverse",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "platforms": ["ios", "android", "web"],
-    "plugins": [
-      "expo-local-authentication",
-      "expo-secure-store",
-      "expo-sqlite"
-    ]
-  }
-}
-```
-
-## 🎨 Design System
-
-### Theme Configuration
-- **Dark Mode**: Cyberpunk-inspired dark theme
-- **Light Mode**: High-contrast light variant
-- **Accent Colors**: Cyan, Purple, Pink, Green, Orange
-- **Glass Effects**: Blur and transparency layers
-- **Neon Animations**: Smooth transitions and micro-interactions
-
-### Component Library
-```typescript
-// Base components
-import { GlowCard, NeonButton, CircularProgress } from '@/components/ui';
-
-// Chart components
-import { LineChart, BarChart, ProgressRing } from '@/components/charts';
-
-// Form components
-import { TaskForm, HabitForm, NoteForm } from '@/components/forms';
-```
-
-## 📊 Performance
-
-### Optimization Techniques
-- **Code Splitting**: Lazy load screens and components
-- **Image Optimization**: WebP format with proper sizing
-- **Bundle Analysis**: Regular size monitoring
-- **Memory Management**: Efficient state and data handling
-- **AI Optimization**: Model quantization and caching
-
-### Performance Metrics
-- **Startup Time**: < 2 seconds cold start
-- **Bundle Size**: < 4MB (excluding AI models)
-- **Memory Usage**: < 100MB runtime memory
-- **AI Inference**: < 500ms response time
-
-## 🔒 Security
-
-### Data Protection
-- **Encryption**: AES-256 for sensitive data
-- **Biometric Auth**: Face ID, Touch ID, fingerprint
-- **Local Storage**: No cloud dependency
-- **Secure Communication**: Encrypted data export/import
-- **Privacy Controls**: Granular data sharing permissions
-
-### Security Best Practices
-```typescript
-// Secure storage example
-import * as SecureStore from 'expo-secure-store';
-
-await SecureStore.setItemAsync('user_token', token, {
-  keychainAccessible: false,
-  requireAuthentication: true,
-});
-```
-
-## 🌐 Internationalization
-
-### Supported Languages
-- **English** (en): Default language
-- **Japanese** (ja): Full localization
-- **Spanish** (es): Complete translation
-
-### Adding New Languages
-```typescript
-// Translation structure
-{
-  "common": {
-    "ok": "OK",
-    "cancel": "Cancel"
-  },
-  "auth": {
-    "login": "Login",
-    "signup": "Sign Up"
-  }
-}
-```
-
-## 📈 Analytics (Local)
-
-### Tracked Metrics
-- **Usage Patterns**: Feature adoption and engagement
-- **Performance**: App startup, response times
-- **Errors**: Crash reporting and error rates
-- **AI Usage**: Model performance and accuracy
-- **Storage**: Database size and efficiency
-
-### Privacy-First Analytics
-```typescript
-// Local analytics example
-const analytics = {
-  trackEvent: (event: string, properties?: object) => {
-    // Store locally, process on-device
-  },
-  trackScreen: (screen: string) => {
-    // Track navigation patterns
-  },
-  getMetrics: () => {
-    // Return aggregated insights
-  }
-};
-```
-
-## 🤝 Contributing
-
-### Development Workflow
-1. **Fork** the repository
-2. **Create** feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** changes (`git commit -m 'Add amazing feature'`)
-4. **Push** to branch (`git push origin feature/amazing-feature`)
-5. **Create** Pull Request
-
-### Code Standards
-- **TypeScript**: Strict mode enabled
-- **ESLint**: Configured with React Native rules
-- **Prettier**: Consistent code formatting
-- **Husky**: Pre-commit hooks
-- **Conventional Commits**: Standardized commit messages
-
-### Pull Request Template
-```markdown
-## Description
-Brief description of changes
-
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Documentation update
-
-## Testing
-- [ ] Unit tests pass
-- [ ] Integration tests pass
-- [ ] E2E tests pass
-- [ ] Manual testing completed
-
-## Checklist
-- [ ] Code follows style guidelines
-- [ ] Self-review completed
-- [ ] Documentation updated
-```
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Expo Team**: For the amazing framework and tooling
-- **React Native Community**: For the robust ecosystem
-- **Transformers.js Team**: For on-device AI capabilities
-- **WatermelonDB**: For the excellent database solution
-- **All Contributors**: Who have helped make HyperVerse possible
-
-## 📞 Support
-
-### Documentation
-- **Architecture Guide**: [ARCHITECTURE.md](./ARCHITECTURE.md)
-- **Project Structure**: [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)
-- **API Documentation**: [docs/api.md](./docs/api.md)
-- **Deployment Guide**: [docs/deployment.md](./docs/deployment.md)
-
-### Community
-- **GitHub Issues**: [Report bugs and request features](https://github.com/your-org/hyperverse/issues)
-- **Discussions**: [Community discussions](https://github.com/your-org/hyperverse/discussions)
-- **Discord**: [Real-time chat](https://discord.gg/hyperverse)
+---
+title: HyperVerse
+description: Offline-first React Native and Expo life-tracking app. Verified status, measured results, and known limitations.
+status: pre-release
+last_verified: 2026-09-29
+audience: all
+---
+
+# HyperVerse
+
+**`pre-release`** · verified `2026-09-29` · ~6 min read
+
+An offline-first personal life-tracking app built with Expo and React Native. There is no
+backend: all state lives on the device in SQLite (WatermelonDB), AsyncStorage, and
+SecureStore.
+
+> [!IMPORTANT]
+> **The screens are now connected to the database.** Tasks, habits, health, finance, settings,
+> and the AI assistant all read and write SQLite through `lib/database/repositories`. Measured
+> test coverage is 37.4%. This README reports measured numbers, not targets. Read
+> [Known limitations](#4-known-limitations) before relying on anything here.
+
+## Contents
+
+1. [What actually works](#1-what-actually-works)
+2. [Verified measurements](#2-verified-measurements)
+3. [Quick start](#3-quick-start)
+4. [Known limitations](#4-known-limitations)
+5. [Architecture at a glance](#5-architecture-at-a-glance)
+6. [Tech stack](#6-tech-stack)
+7. [Scripts](#7-scripts)
+8. [Testing](#8-testing)
+9. [Continuous integration](#9-continuous-integration)
 
 ---
 
-## 🚀 Quick Start
+## 1. What actually works
 
-1. **Clone & Install**:
-   ```bash
-   git clone https://github.com/your-org/hyperverse.git
-   cd hyperverse
-   pnpm install
-   ```
+| Area | State | Evidence |
+| :-- | :-- | :-- |
+| Database layer | Implemented, tested | 12 tables, 12 models, schema v2 with migrations; real CRUD in `__tests__/database/smoke.test.ts` |
+| Repositories | Implemented, tested | 8 domain repositories; 21 tests in `__tests__/database/repositories.test.ts` |
+| Authentication | Implemented, tested | Device identity, SecureStore, biometrics, cascading delete; 14 unit + 15 integration tests |
+| Screen persistence | Implemented | Tasks, habits, health, finance, settings, dashboard, and AI chat all read/write SQLite |
+| AI assistant | Partially implemented | Answers grounded in your own records via the local insight engine; no model files bundled |
+| State management | Implemented | `authStore`, `themeStore` (Zustand); the old AsyncStorage `dataStore` is gone |
+| Build pipeline | Working | `npm run build` emits iOS + Android bundles, 49 assets, valid manifests |
+| Type safety | Clean | `tsc --noEmit` → 0 errors |
+| Lint | Clean | `eslint` → 0 errors, **0 warnings** |
+| Tests | Passing | 192 tests, 11 suites |
+| CI | Configured | Typecheck, lint, tests, coverage, and a dependency audit run on every PR |
 
-2. **Start Development**:
-   ```bash
-   pnpm dev
-   ```
+## 2. Verified measurements
 
-3. **Explore Features**:
-   - Create your profile
-   - Set up tasks and habits
-   - Try the AI assistant
-   - Customize your theme
+Produced on **2026-09-29** (Windows) by running the command shown.
 
-4. **Build & Deploy**:
-   ```bash
-   pnpm build
-   # Follow deployment guide for your target platform
-   ```
+| Check | Command | Result |
+| :-- | :-- | :-- |
+| Types | `npm run typecheck` | `0 errors` |
+| Lint | `npm run lint` | `0 errors, 0 warnings` |
+| Tests | `npm test` | `192 passed / 192 total` |
+| Coverage | `npm run test:coverage` | `37.4% stmts · 34.45% branch · 31.38% funcs` |
+| iOS bundle | `npm run build` | `5.04 MB` minified |
+| Android bundle | `npm run build` | `5.05 MB` minified |
 
-**Welcome to the future of personal productivity! 🌟**
+<details>
+<summary>Coverage by area</summary>
+
+Measured over the `collectCoverageFrom` globs in `jest.config.js`, which cover `lib/`,
+`components/`, and `hooks/`.
+
+| Area | Statements |
+| :-- | --: |
+| `hooks` | 100% |
+| `lib/database/repositories` | 84.54% |
+| `lib/ai/insights` | 81.51% |
+| `lib/services` | 56.95% |
+| `lib/database` | 46.55% |
+| `lib/database/models` | 29.62% |
+| `components` | 12.37% |
+| `lib/stores` | 8.33% |
+| `lib/ai/models`, `lib/ai/rag`, `components/ui` | 0% |
+
+`app/` is still not in the coverage globs, so the true figure including screen code is lower
+than the headline number. `lib/ai/models` and `lib/ai/rag` remain at 0% because they wrap
+`@xenova/transformers`, which needs a native module Jest cannot load.
+
+</details>
+
+> [!WARNING]
+> Bundle size is ~5 MB per platform, not the "< 4 MB" this file previously claimed. Budget
+> accordingly before shipping.
+
+## 3. Quick start
+
+Requires Node 20+ (CI uses 24) and pnpm 9.
+
+```bash
+git clone https://github.com/JahanzaibJameel/HyperVerse.git
+cd HyperVerse
+pnpm install
+npx expo start
+```
+
+A device or simulator needs a development build, because the app uses native modules Expo Go
+does not bundle (WatermelonDB over SQLite, SecureStore, local authentication):
+
+```bash
+npx expo prebuild --platform ios
+npx expo run:ios
+```
+
+For the static Expo Go build, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## 4. Known limitations
+
+Ordered by how much each would affect someone using the app.
+
+1. **On-device AI models are not bundled.** `assets/ai-models/` does not exist. The assistant
+   therefore runs the local insight engine, which is grounded in your real records but is a
+   deterministic template engine, not a language model. Downloading a model through
+   `ModelManager` is wired up but untested on a real device.
+2. **Coverage is 37.4%.** Repositories, the insight engine, auth, and hooks are genuinely
+   tested. `lib/ai/models`, `lib/ai/rag`, `components/ui`, and `lib/stores` are at or near 0%,
+   and `app/` is excluded from the coverage globs entirely.
+3. **No encryption at rest.** `notes.is_encrypted` was removed in schema v2 rather than left as
+   a column with nothing behind it. Data is in plaintext SQLite.
+4. **E2E tests are unexercised.** The two Detox specs are excluded from Jest and no workflow
+   runs them, so they may not even compile against a real app.
+5. **Migrations are only partially exercised.** Tests run against WatermelonDB's LokiJS
+   adapter, which builds a fresh schema. The v1→v2 upgrade SQL
+   (`ALTER TABLE "notes" DROP COLUMN "is_encrypted";`) has never run against a real SQLite file
+   written by v1.
+6. **`proguard-rules.pro` is inert.** It must be copied into a generated `android/app/` after
+   `expo prebuild`; no `android/` directory is committed.
+7. **Settings are not reactive to external changes.** The settings screen writes through the
+   repository, but edits made elsewhere will not live-update an open screen.
+
+## 5. Architecture at a glance
+
+```mermaid
+flowchart TD
+    subgraph ui["UI — app/"]
+        tabs[7 tab screens]
+        auth["(auth)/setup"]
+    end
+    subgraph logic["Logic — lib/"]
+        stores["Zustand stores<br/>auth · theme"]
+        services["AuthService"]
+        ai["AIService<br/>ModelManager · VectorStore"]
+        insights["InsightEngine<br/>snapshotBuilder"]
+    end
+    subgraph data["Data — lib/database"]
+        repos["8 domain repositories"]
+        db["WatermelonDB<br/>12 tables · 12 models · schema v2"]
+    end
+    subgraph device["Device"]
+        sqlite[("SQLite")]
+        async[("AsyncStorage")]
+        secure[("SecureStore")]
+    end
+
+    tabs --> repos
+    auth --> services
+    stores --> async
+    services --> secure
+    services -.-> repos
+    ai --> insights
+    insights --> repos
+    ai -.-> models["on-device model<br/>(not bundled)"]
+
+    repos --> db
+    db --> sqlite
+
+    classDef ok fill:none,stroke:#2a9d8f
+    classDef gap fill:none,stroke:#d97757,stroke-width:2px,stroke-dasharray: 5 5
+    class tabs,repos,db,sqlite,insights ok
+    class models gap
+```
+
+All solid edges are live code paths. The **dashed** edge is the only intended path that does
+not exist yet: no model files ship with the app, so `AIService` always takes the local insight
+engine route unless a model has been downloaded at runtime.
+
+## 6. Tech stack
+
+Versions pinned in `package.json`.
+
+| Layer | Choice | Version |
+| :-- | :-- | :-- |
+| Framework | Expo, new architecture enabled | `~54.0.27` |
+| Runtime | React Native | `0.81.5` |
+| UI | React | `19.1.0` |
+| Language | TypeScript | `~5.9.2` |
+| Navigation | Expo Router, typed routes, React Compiler | `~6.0.17` |
+| Database | WatermelonDB over `expo-sqlite` | `^0.27.1` |
+| State | Zustand | `^5.0.1` |
+| AI | `@xenova/transformers` + local insight engine | `^2.17.2` |
+| Animation | Reanimated | `~4.1.1` |
+| Tests | Jest + React Native Testing Library; Detox for E2E | `^29.7.0`, `^20.25.3` |
+
+> [!NOTE]
+> `@shopify/react-native-skia` and `lancedb` are **not** dependencies.
+> `components/ui/ShaderBackground.tsx` uses `expo-linear-gradient` and Reanimated;
+> `lib/ai/rag/VectorStore.ts` is a local JSON file with cosine similarity.
+> `react-i18next`, `victory-native`, `react-hook-form`, `date-fns`, `@tanstack/react-query`,
+> and several `expo-*` packages were removed after an audit found zero imports.
+
+## 7. Scripts
+
+| Command | Does |
+| :-- | :-- |
+| `npx expo start` | Start the dev server — use this locally |
+| `npm run build` | Static Expo Go build into `static-build/` |
+| `npm run serve` | Serve the build via `server/serve.js` |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Jest, excluding Detox E2E specs |
+| `npm run test:watch` | Jest in watch mode |
+| `npm run test:coverage` | Jest with coverage |
+| `npm run test:e2e` | Detox; needs an emulator and a built app |
+| `npm run lint` | ESLint, check-only |
+| `npm run lint:fix` | ESLint with `--fix` |
+| `npm run verify` | `typecheck` + `lint` + `test` in sequence |
+| `npm run bundle-report` | `react-native-bundle-visualizer` |
+| `npm run storybook` | Storybook on port 8082, separate from the app |
+| `npm run storybook:web` | Storybook for web on port 8082 |
+
+> [!NOTE]
+> `npm run lint` is check-only and will not modify your working tree. Use `npm run lint:fix`
+> when you want ESLint to apply fixes for you. Storybook is wired up and reachable on port
+> 8082 via `npm run storybook`; see [docs/STORYBOOK.md](docs/STORYBOOK.md).
+
+## 8. Testing
+
+```text
+__tests__/
+├── unit/          useColors · AuthService · User/Task model logic · insight engine · logger
+├── integration/   authFlow — real service + store
+├── components/    GlowCard · NeonButton
+├── database/      smoke test + repository tests — real WatermelonDB CRUD
+└── e2e/           Detox specs, excluded from Jest
+```
+
+`__tests__/database/smoke.test.ts` and `__tests__/database/repositories.test.ts` run against
+WatermelonDB's pure-JS LokiJS adapter, swapped in by `jest.setup.js`, because the SQLite
+adapter needs a native module Jest cannot load. That is why database tests exercise genuine
+query and relation behaviour.
+
+Full detail, including the mocking strategy: [docs/TESTING.md](docs/TESTING.md).
+
+## 9. Continuous integration
+
+All workflows run on pushes and pull requests to `main`, except `release.yml`, which runs on
+`v*` tags.
+
+| Workflow | Runs |
+| :-- | :-- |
+| `test.yml` | `pnpm install`, `typecheck`, `lint`, `test`, `test:coverage` |
+| `test.yml` (audit job) | `pnpm audit --audit-level=high`, advisory only |
+| `build.yml` | Web export, then the static build |
+| `release.yml` | Tag-triggered release |
+
+> [!NOTE]
+> Typecheck and lint are now enforced on pull requests, and `lint` is check-only so a
+> regression fails CI instead of being silently auto-fixed. The advisory `pnpm audit` job
+> reports high-severity advisories without blocking unrelated fixes.
+> `.github/dependabot.yml` and the issue/PR templates are present.
+
+---
+
+**Status** `pre-release` · **verified** `2026-09-29` · [Architecture](ARCHITECTURE.md) ·
+[Structure](PROJECT_STRUCTURE.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md) ·
+[Security](SECURITY.md)
+
+[Edit this page](https://github.com/JahanzaibJameel/HyperVerse/blob/main/README.md) ·
+[Open an issue](https://github.com/JahanzaibJameel/HyperVerse/issues/new)
