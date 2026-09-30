@@ -1,145 +1,139 @@
-# HyperVerse Roadmap
+---
+title: Roadmap
+description: What is planned for HyperVerse, ordered by the gap between what is built and what is intended.
+status: pre-release
+last_verified: 2026-09-29
+audience: all
+---
 
-## 🚀 Current Status: v1.0 - Production Ready
+# Roadmap
 
-### ✅ Completed Features
-- **AI-Native Architecture**: On-device AI with RAG pipeline
-- **Offline-First Design**: Complete offline functionality with WatermelonDB
-- **Cyberpunk Design System**: Skia shaders, Reanimated 4 animations
-- **95% Test Coverage**: Unit, integration, and E2E tests
-- **Enterprise Infrastructure**: CI/CD, ESLint v9, TypeScript
-- **Accessibility**: ARIA labels, screen reader support
-- **Documentation**: Complete community docs
+**`pre-release`** · verified `2026-09-29` · ~4 min read
+
+Ordered by how much each item blocks real use, not by date. No dates are attached because none
+are committed to.
+
+> [!IMPORTANT]
+> Stages 0, 1, and 2 are complete. The app now persists real data in SQLite, CI enforces
+> typecheck and lint, and lint is clean at 0 errors and 0 warnings. Measured coverage is 37.4%
+> of statements. Stage 3 is partially done: the AI answers grounded questions through a local
+> engine, but no on-device model files ship with the app.
+
+For the longer-horizon technical-debt view, see [ROADMAP_V2.md](ROADMAP_V2.md).
+
+## Contents
+
+1. [Stage 0 — Make it honest](#stage-0--make-it-honest) ✅
+2. [Stage 1 — Persist real data](#stage-1--persist-real-data) ✅
+3. [Stage 2 — Finish the feature set](#stage-2--finish-the-feature-set) ✅
+4. [Stage 3 — Make the AI run](#stage-3--make-the-ai-run)
+5. [Stage 4 — Ship](#stage-4--ship)
+6. [Explicitly not planned](#explicitly-not-planned)
 
 ---
 
-## 🔮 v1.1 - Cloud Integration (Q2 2026)
+## Stage 0 — Make it honest ✅
 
-### 🌐 Cloud Sync & Backup
-- **Multi-Device Sync**: Secure cloud synchronization
-- **Backup & Restore**: Automatic cloud backups
-- **Conflict Resolution**: Smart merge algorithms
-- **Privacy-First**: End-to-end encryption
+Prerequisites for trusting any measurement. **Complete.**
 
-### 📱 Platform Expansion
-- **Web Dashboard**: Progressive Web App
-- **Desktop Client**: Electron app with native features
-- **API Layer**: RESTful API for third-party integrations
+- [x] Add `typecheck` and check-only `lint` to `test.yml` so CI enforces them, not just Jest
+- [x] Fix the lint warnings — now 0 errors and 0 warnings, including `react-hooks/exhaustive-deps`
+- [x] Delete the `storybook` scripts, config, workflow, and 7 unreachable stories rather than
+      leave scripts that only print a message
+- [x] Re-add Storybook properly: config, `metro.config.js` generation hook, entry point, and
+      real stories for the components that have them. `npm run storybook` starts it on port
+      8082. See [docs/STORYBOOK.md](docs/STORYBOOK.md).
+- [x] Move `react-native-bundle-visualizer` from `dependencies` to `devDependencies`
+- [x] Make `lint` check-only and add `lint:fix`
+- [x] Add `dev` for local use and keep `dev:replit` explicitly Replit-only
+- [x] Re-enable linting on test files, which were silently excluded, and fix the 4 errors that
+      surfaced
+- [x] Add an advisory `pnpm audit` job to CI
+- [x] Remove ~15 dependencies with zero imports, including `@tanstack/react-query` and its
+      root provider
 
----
+## Stage 1 — Persist real data ✅
 
-## 🎯 v1.2 - Enhanced AI (Q3 2026)
+**This was the blocking work. Complete.**
 
-### 🧠 AI Capabilities
-- **Multi-Model Support**: GPT, Claude, Llama integration
-- **Custom Model Training**: Personalized AI models
-- **Voice Interface**: On-device speech recognition
-- **AI Agents**: Automated task management
+- [x] Connect `app/(tabs)/tasks.tsx` to `lib/database` and delete `mockTasks`
+- [x] Replace `dataStore` health/finance demo state with real `health_metrics`, `transactions`,
+      and `financial_goals` queries
+- [x] Persist `ai_messages` for chat history through `AIRepository`
+- [x] Add database migrations — schema is now version 2 with a `migrations` array passed to
+      `SQLiteAdapter`
+- [x] Define a `User` record lifecycle — onboarding now creates a `users` row and stores its
+      ID as `user.dbId`
+- [x] Decide about AsyncStorage — the `dataStore` was deleted; AsyncStorage now holds only UI
+      preferences
+- [x] Implement `deleteUserCascade` so account deletion actually removes all dependent rows
 
-### 🔍 Advanced Analytics
-- **Predictive Insights**: ML-powered recommendations
-- **Health Analytics**: Advanced biometric analysis
-- **Financial Forecasting**: AI-powered budget predictions
-- **Productivity Metrics**: Deep performance analytics
+## Stage 2 — Finish the feature set ✅
 
----
+- [x] Implement `app/(tabs)/habits.tsx` against the `habits` and `habit_entries` tables
+- [x] Implement `app/(tabs)/settings.tsx` against the `settings` table
+- [x] Remove the `ar`, `blockchain`, `iot`, and `social` tabs; four tabs that reset on every
+      reload were worse than four that do not exist
+- [x] Drop `notes.is_encrypted` in schema v2 rather than leave a column implying an encryption
+      guarantee that does not exist
+- [x] Wire `app/tasks/new.tsx` and `app/tasks/[id].tsx` to the database
 
-## 🌟 v1.3 - Social & Collaboration (Q4 2026)
+## Stage 3 — Make the AI run
 
-### 👥 Social Features
-- **Teams & Workspaces**: Collaborative environments
-- **Real-time Collaboration**: Live editing and sharing
-- **Community Features**: Public profiles and achievements
-- **Knowledge Sharing**: Collaborative AI insights
+**Partially complete.** The assistant works, but not the way the architecture originally
+intended.
 
-### 🎮 Gamification
-- **Achievement System**: Comprehensive badge system
-- **Leaderboards**: Competitive productivity tracking
-- **Challenges**: Personal and team challenges
-- **Rewards**: Token-based incentive system
+Done:
 
----
+- [x] Call `AIService` from `app/(tabs)/ai.tsx`, replacing the canned `AI_RESPONSES`
+- [x] Build a snapshot from the user's real records (`snapshotBuilder`) and answer from it
+      (`InsightEngine`) when no model is active
+- [x] Report the backend used, so the UI and tests can tell `'local'` from `'model'`
+- [x] Add 26 tests for the insight engine
 
-## 🚀 v2.0 - Ecosystem Expansion (2027)
+Open:
 
-### 🔗 Integrations
-- **Third-Party Apps**: Zapier, IFTTT integrations
-- **Hardware Integration**: IoT device ecosystem
-- **Financial Services**: Banking and investment APIs
-- **Healthcare Integration**: Medical record systems
+- [ ] Choose and vendor a model, or define a download flow. `ModelManager` needs files at
+      `model.localPath`; `assets/ai-models/` does not exist, so the model path has never run on
+      a device
+- [ ] Decide on real embeddings. `VectorStore` computes cosine similarity over JSON, but
+      nothing currently generates the embeddings it stores
+- [ ] Test `lib/ai/models` and `lib/ai/rag`, both at 0% — they wrap `@xenova/transformers`,
+      which needs a native module Jest cannot load
+- [ ] Size models against the ~5 MB JS bundle budget, or move them to a post-install download
+- [ ] Make the local engine's limits visible in the UI, so users do not mistake templated
+      answers for a language model
 
-### 🌍 Global Expansion
-- **Internationalization**: Full i18n support
-- **Regional Compliance**: GDPR, CCPA, SOC2
-- **Multi-Currency**: Global financial support
-- **Local Partnerships**: Regional service providers
+## Stage 4 — Ship
 
----
+- [ ] Raise coverage above 37.4%. `lib/ai/models`, `lib/ai/rag`, `components/ui`, and
+      `lib/stores` are at or near 0%, and `app/` is excluded from the coverage globs entirely
+- [ ] Test the v1→v2 migration against a real SQLite file. Tests use the LokiJS adapter, which
+      builds a fresh schema, so the `DROP COLUMN` SQL has never executed
+- [ ] Get the two Detox specs running on an emulator; they have never been executed
+- [ ] Decide on a privacy posture and write it down; see [SECURITY.md](SECURITY.md)
+- [ ] Establish whether `notes` and AI chat history should be encrypted at rest
+- [ ] Decide whether to keep `sentry-expo`; if kept, document the telemetry it introduces
+- [ ] Verify on physical devices, not only in the simulator
+- [ ] Produce store-ready builds; currently only a static Expo Go build exists
 
-## 🏗️ Technical Evolution
+## Explicitly not planned
 
-### 📊 Infrastructure
-- **Microservices Architecture**: Scalable service deployment
-- **Edge Computing**: Global CDN and edge processing
-- **Blockchain Integration**: Decentralized data storage
-- **Quantum-Ready**: Future-proof encryption
+Recorded here so they are not quietly reintroduced. The previous roadmap contained all of
+these; none had supporting code, and the project has no backend, no accounts, and no server.
 
-### 🔧 Developer Experience
-- **Plugin System**: Third-party extension support
-- **SDK & APIs**: Comprehensive developer tools
-- **Open Source**: Community contribution framework
-- **Documentation**: Interactive API docs
-
----
-
-## 📈 Success Metrics
-
-### 🎯 KPIs
-- **User Adoption**: 100K+ active users
-- **Retention Rate**: 80%+ monthly retention
-- **Test Coverage**: Maintain 95%+ coverage
-- **Performance**: <100ms response times
-- **Uptime**: 99.9% availability
-
-### 🏆 Quality Gates
-- **Code Quality**: Maintain ESLint compliance
-- **Security**: Zero critical vulnerabilities
-- **Accessibility**: WCAG 2.1 AA compliance
-- **Performance**: Lighthouse scores >90
-- **Documentation**: 100% API coverage
-
----
-
-## 🤝 Community & Open Source
-
-### 🌟 Community Building
-- **Contributor Program**: Active maintainer community
-- **Hackathons**: Regular developer events
-- **Educational Content**: Tutorials and workshops
-- **Research Papers**: Academic publications
-
-### 🔓 Open Source Strategy
-- **Core Framework**: Open source core components
-- **Plugin Ecosystem**: Community-driven extensions
-- **Documentation**: Comprehensive developer guides
-- **Support**: Community forums and Discord
+- Cloud sync, multi-device sync, and conflict resolution
+- Microservices, Kubernetes, edge computing, and any server-side infrastructure
+- A public API and third-party integrations
+- A desktop client, A/B testing framework, or OTA update infrastructure
+- Blockchain for data storage, "quantum-ready" encryption, and web3
+- Research papers, hackathons, bug bounties, and compliance certifications
+- User-count and retention targets
 
 ---
 
-## 🎯 Vision 2030
+**Status** `pre-release` · **verified** `2026-09-29` · [README](README.md) ·
+[Technical debt](ROADMAP_V2.md) · [Contributing](CONTRIBUTING.md)
 
-### 🌍 Impact Goals
-- **10M+ Users**: Global user base
-- **100+ Countries**: Worldwide availability
-- **Enterprise Adoption**: Fortune 500 clients
-- **Educational Integration**: School partnerships
-
-### 🚀 Innovation Focus
-- **AI Advancement**: Leading AI research
-- **Privacy Leadership**: Data sovereignty pioneer
-- **Sustainability**: Carbon-neutral operations
-- **Accessibility**: Universal design principles
-
----
-
-*This roadmap represents our commitment to continuous innovation while maintaining the 100/100 quality standard that defines HyperVerse.*
+[Edit this page](https://github.com/JahanzaibJameel/HyperVerse/blob/main/ROADMAP.md) ·
+[Open an issue](https://github.com/JahanzaibJameel/HyperVerse/issues/new)
