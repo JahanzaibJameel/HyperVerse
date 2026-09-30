@@ -1,4 +1,14 @@
+---
+title: Code of Conduct
+description: Contributor Covenant, version 2.1, as adopted for the HyperVerse project.
+status: reference
+last_verified: 2026-09-29
+audience: all
+---
+
 # Contributor Covenant Code of Conduct
+
+**`reference`** · verified `2026-09-29` · ~4 min read
 
 ## Our Pledge
 
@@ -34,12 +44,17 @@ diverse, inclusive, and healthy community.
 ## Enforcement
 
 ### Reporting
-If you witness or experience unacceptable behavior, please report it to:
-- **Email**: conduct@hyperverse.app
-- **GitHub**: Create a private issue with the "conduct" label
-- **Discord**: Message any community moderator
+If you witness or experience unacceptable behavior, report it through GitHub:
 
-All reports will be reviewed and investigated promptly and confidentially.
+- **Repository maintainers**: open an issue mentioning the concern, or use GitHub's private
+  vulnerability reporting if it is sensitive.
+
+> [!NOTE]
+> The previous version of this file listed `conduct@hyperverse.app` and a Discord server with
+> community moderators. Neither is associated with this repository, and there is no
+> moderator team. Until a real address is configured, **contacting the repository maintainer
+> directly through GitHub is the only working channel.** Reports are best-effort; there is no
+> response-time commitment.
 
 ### Consequences
 Community leaders may take any action they deem appropriate, including:
@@ -51,11 +66,13 @@ Community leaders may take any action they deem appropriate, including:
 ## Scope
 
 This code of conduct applies to all community spaces, including:
-- **GitHub repositories**: Issues, pull requests, discussions
-- **Discord server**: All channels and direct messages
-- **Events**: Online and offline community events
-- **Social media**: Official HyperVerse accounts
+- **GitHub repositories**: Issues, pull requests, and discussions
+- **Events**: Online and offline community events, if any are held
+- **Social media**: Official HyperVerse accounts, if any exist
 - **Email communications**: Community-related emails
+
+At present the repository is the project's only community space; the other channels listed
+above are aspirational.
 
 This code of conduct also applies when an individual is officially representing the community in public spaces.
 
@@ -133,10 +150,9 @@ https://www.contributor-covenant.org/translations.
 
 ## Contact Information
 
-If you have questions or need clarification about this code of conduct:
-- **Email**: conduct@hyperverse.app
-- **GitHub**: Create an issue with the "conduct" label
-- **Discord**: Join our server and message a moderator
+If you have questions about this code of conduct, raise an issue on the repository or
+contact the maintainer through GitHub. No dedicated email address or community-moderation
+channel is currently configured for this project.
 
 ## License
 
@@ -145,4 +161,10 @@ You can share and adapt it as long as you give attribution to the original proje
 
 ---
 
-Thank you for helping us create a welcoming and inclusive community for everyone! 🌟
+**Status** `reference` · **verified** `2026-09-29` · [README](README.md) ·
+[Contributing](CONTRIBUTING.md)
+
+[Edit this page](https://github.com/JahanzaibJameel/HyperVerse/blob/main/CODE_OF_CONDUCT.md) ·
+[Open an issue](https://github.com/JahanzaibJameel/HyperVerse/issues/new)
+
+Thank you for helping us create a welcoming and inclusive community for everyone.
