@@ -21,7 +21,7 @@ const accentColors: AccentColor[] = ['cyan', 'purple', 'pink', 'green', 'orange'
 
 export const useThemeStore = create<ThemeState>()(
   persist(
-    (set: any, get: any) => ({
+    (set, get) => ({
       themeMode: 'system',
       accentColor: 'cyan',
       isSystemDark: false,
