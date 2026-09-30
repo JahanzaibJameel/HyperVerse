@@ -2,14 +2,15 @@ import * as Application from 'expo-application';
 import * as Crypto from 'expo-crypto';
 import * as LocalAuthentication from 'expo-local-authentication';
 import Constants from 'expo-constants';
+
 import { safeGetItem, safeSetItem, safeDeleteItem } from '../storage';
-import * as SecureStore from 'expo-secure-store';
 
 export interface UserProfile {
   id: string;
+  dbId?: string;
   deviceId: string;
   name: string;
-  email?: string;
+  email?: string | null;
   avatarUrl?: string | null;
   level: number;
   xp: number;
@@ -96,7 +97,7 @@ class AuthService {
       id: `user_${deviceId}`,
       deviceId,
       name,
-      email,
+      email: email ?? null,
       avatarUrl: null,
       level: 1,
       xp: 0,
@@ -337,10 +338,20 @@ class AuthService {
   }
 
   /**
-   * Delete user profile (for reset functionality)
+   * Delete user profile and every record that references it.
+   *
+   * Clears the SecureStore profile *and* the SQLite rows. Deleting only the
+   * keychain entry would leave the domain data readable in the plaintext
+   * database file, so both stores are cleared together.
    */
-  async deleteProfile(): Promise<void> {
+  async deleteProfile(dbId?: string): Promise<void> {
     try {
+      if (dbId) {
+        const { database, deleteUserCascade } = await import('../database/database');
+        await database.write(async () => {
+          await deleteUserCascade(dbId);
+        });
+      }
       await safeDeleteItem(this.USER_PROFILE_KEY);
       await safeDeleteItem(this.BIOMETRIC_ENABLED_KEY);
       await safeDeleteItem(this.APP_LOCK_ENABLED_KEY);
