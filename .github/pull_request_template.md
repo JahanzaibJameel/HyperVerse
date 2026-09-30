@@ -12,14 +12,13 @@ Brief description of changes made in this pull request.
 - [ ] 🧪 Test-related (changes to tests only)
 
 ## 🧪 Testing
-- [ ] Unit tests pass (`pnpm test`)
-- [ ] Integration tests pass
-- [ ] E2E tests pass (`pnpm test:e2e`)
+- [ ] `pnpm verify` passes (typecheck, lint, tests)
+- [ ] E2E tests pass (`pnpm test:e2e`) — or not applicable, since this needs an emulator
 - [ ] Manual testing completed
-- [ ] Storybook components updated (if UI changes)
-- [ ] Chromatic visual tests pass
+- [ ] Tests added or updated for the change
 
 ## 📋 Checklist
+- [ ] `pnpm lint` passes (check-only; run `pnpm lint:fix` to apply fixes)
 - [ ] Code follows the project's style guidelines
 - [ ] Self-review of the code completed
 - [ ] Documentation updated (README, ARCHITECTURE.md, or inline docs)
@@ -35,7 +34,6 @@ Add screenshots to help explain your changes, especially for UI modifications.
 - [ ] No performance regression
 - [ ] Bundle size impact assessed
 - [ ] Memory usage impact assessed
-- [ ] AI model performance considered (if applicable)
 
 ## 🔒 Security Considerations
 - [ ] No sensitive data exposure
