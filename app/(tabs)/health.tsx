@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -10,21 +10,17 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GlowCard } from "@/components/GlowCard";
 import { StatBar } from "@/components/StatBar";
 import { CircularProgress } from "@/components/CircularProgress";
-import { useApp } from "@/context/AppContext";
+import { useAuthStore } from "@/lib/stores/authStore";
+import { HealthRepository } from "@/lib/database/repositories/HealthRepository";
 import { useColors } from "@/hooks/useColors";
+import type { HealthMetric } from "@/lib/database/models/HealthMetric";
 
-const WORKOUTS = [
-  { type: "Morning Run", duration: "32 min", cal: 310, icon: "run" as const, date: "Today" },
-  { type: "HIIT Circuit", duration: "25 min", cal: 280, icon: "lightning-bolt" as const, date: "Yesterday" },
-  { type: "Yoga Flow", duration: "45 min", cal: 180, icon: "yoga" as const, date: "Mon" },
-];
-
-const SLEEP_DATA = [6.5, 7.2, 8.1, 7.4, 6.8, 7.9, 7.4];
 const SLEEP_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const ACHIEVEMENTS = [
@@ -33,32 +29,99 @@ const ACHIEVEMENTS = [
   { name: "Iron Will", icon: "dumbbell" as const, desc: "30 workouts/month", earned: false, color: "#ffb800" },
   { name: "Marathon", icon: "run-fast" as const, desc: "Run 42km total", earned: false, color: "#ff006e" },
   { name: "Zen Master", icon: "meditation" as const, desc: "21 days meditation", earned: true, color: "#00ff9d" },
-  { name: "Calorie King", icon: "fire" as const, desc: "Burn 500 kcal/day × 30", earned: false, color: "#ff6b00" },
+  { name: "Calorie King", icon: "fire" as const, desc: "Burn 500 kcal/day x 30", earned: false, color: "#ff6b00" },
 ];
 
 export default function HealthScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { health, addXP } = useApp();
+  const { user, addXP } = useAuthStore();
+  const [metrics, setMetrics] = useState<HealthMetric[]>([]);
+  const [latest, setLatest] = useState<HealthMetric | null>(null);
   const [loggedWorkout, setLoggedWorkout] = useState(false);
   const [loggedMeditation, setLoggedMeditation] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const handleLogWorkout = () => {
-    if (!loggedWorkout) {
+  const loadHealth = useCallback(async () => {
+    if (!user?.dbId) {
+      setMetrics([]);
+      setLatest(null);
+      return;
+    }
+    try {
+      const [all, mostRecent] = await Promise.all([
+        HealthRepository.findByUser(user.dbId),
+        HealthRepository.findLatest(user.dbId),
+      ]);
+      setMetrics(all);
+      setLatest(mostRecent ?? null);
+    } catch (error) {
+      console.error("Failed to load health metrics", error);
+    }
+  }, [user?.dbId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadHealth();
+    }, [loadHealth])
+  );
+
+  const health = {
+    steps: latest?.steps ?? 0,
+    stepsGoal: latest?.stepsGoal ?? 10000,
+    calories: latest?.calories ?? 0,
+    sleep: latest?.sleepHours ?? 0,
+    heartRate: latest?.heartRate ?? 0,
+    workouts: latest?.workouts ?? 0,
+  };
+
+  // 7-day sleep series from real records, oldest first.
+  const sleepSeries = (() => {
+    if (metrics.length === 0) return [];
+    const last7 = [...metrics].slice(0, 7).reverse();
+    return last7.map((m) => {
+      const day = new Date(m.date).getDay();
+      return { hours: m.sleepHours, day: SLEEP_DAYS[day] };
+    });
+  })();
+
+  const averageSleep =
+    sleepSeries.length > 0
+      ? sleepSeries.reduce((sum, s) => sum + s.hours, 0) / sleepSeries.length
+      : 0;
+
+  const handleLogWorkout = async () => {
+    if (loggedWorkout || !user?.dbId) return;
+
+    try {
+      if (latest) {
+        await HealthRepository.addWorkout(latest);
+      } else {
+        await HealthRepository.upsertToday(user.dbId, {
+          steps: 0,
+          stepsGoal: 10000,
+          calories: 0,
+          sleepHours: 0,
+          heartRate: 0,
+          workouts: 1,
+        });
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       addXP(150);
       setLoggedWorkout(true);
+      await loadHealth();
+    } catch (error) {
+      console.error("Failed to log workout", error);
     }
   };
 
-  const handleMeditation = () => {
-    if (!loggedMeditation) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      addXP(75);
-      setLoggedMeditation(true);
-    }
+  const handleMeditation = async () => {
+    if (loggedMeditation) return;
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    addXP(75);
+    setLoggedMeditation(true);
   };
 
   return (
@@ -97,7 +160,6 @@ export default function HealthScreen() {
         <View style={styles.ringsRow}>
           <CircularProgress value={health.heartRate} max={100} size={80} strokeWidth={6} color={colors.pink} label="BPM" />
           <CircularProgress value={health.workouts} max={5} size={80} strokeWidth={6} color={colors.purple} label="WRKT" />
-          <CircularProgress value={72} max={120} size={80} strokeWidth={6} color={colors.warning} label="MIN" />
         </View>
       </LinearGradient>
 
@@ -106,40 +168,55 @@ export default function HealthScreen() {
         <View style={styles.cardHeader}>
           <MaterialCommunityIcons name="sleep" size={16} color={colors.cyan} />
           <Text style={[styles.cardTitle, { color: colors.foreground }]}>SLEEP ANALYSIS</Text>
-          <Text style={[styles.cardSub, { color: colors.cyan }]}>7-day avg: 7.3h</Text>
+          {sleepSeries.length > 0 && (
+            <Text style={[styles.cardSub, { color: colors.cyan }]}>
+              7-day avg: {averageSleep.toFixed(1)}h
+            </Text>
+          )}
         </View>
-        <View style={styles.sleepBars}>
-          {SLEEP_DATA.map((val, i) => (
-            <View key={i} style={styles.sleepBarWrap}>
-              <View style={[styles.sleepBarContainer, { height: 80 }]}>
-                <View
-                  style={[
-                    styles.sleepBar,
-                    {
-                      height: `${(val / 10) * 100}%`,
-                      backgroundColor: i === 6 ? colors.cyan : colors.cyan + "55",
-                    },
-                    i === 6
-                      ? (Platform.OS === "web"
-                          ? ({ boxShadow: `0 0 8px ${colors.cyan}` } as any)
-                          : { shadowColor: colors.cyan, shadowOpacity: 0.6, shadowRadius: 6 })
-                      : {},
-                  ]}
-                />
-              </View>
-              <Text style={[styles.sleepDay, { color: i === 6 ? colors.cyan : colors.mutedForeground }]}>
-                {SLEEP_DAYS[i]}
-              </Text>
-              <Text style={[styles.sleepVal, { color: colors.foreground }]}>{val}h</Text>
-            </View>
-          ))}
-        </View>
-        <View style={[styles.sleepQuality, { backgroundColor: colors.cyan + "12", borderColor: colors.cyan + "33" }]}>
-          <MaterialCommunityIcons name="star-circle" size={16} color={colors.cyan} />
-          <Text style={[styles.sleepQualityText, { color: colors.foreground }]}>
-            Sleep quality: <Text style={{ color: colors.cyan, fontFamily: "Inter_700Bold" }}>Excellent (84/100)</Text>
+        {sleepSeries.length === 0 ? (
+          <Text style={[styles.emptyNote, { color: colors.mutedForeground }]}>
+            No sleep records yet. Log a health metric to start tracking.
           </Text>
-        </View>
+        ) : (
+          <>
+            <View style={styles.sleepBars}>
+              {sleepSeries.map((s, i) => (
+                <View key={i} style={styles.sleepBarWrap}>
+                  <View style={[styles.sleepBarContainer, { height: 80 }]}>
+                    <View
+                      style={[
+                        styles.sleepBar,
+                        {
+                          height: `${Math.min(100, (s.hours / 10) * 100)}%`,
+                          backgroundColor: i === sleepSeries.length - 1 ? colors.cyan : colors.cyan + "55",
+                        },
+                        i === sleepSeries.length - 1
+                          ? (Platform.OS === "web"
+                              ? ({ boxShadow: `0 0 8px ${colors.cyan}` } as any)
+                              : { shadowColor: colors.cyan, shadowOpacity: 0.6, shadowRadius: 6 })
+                          : {},
+                      ]}
+                    />
+                  </View>
+                  <Text style={[styles.sleepDay, { color: i === sleepSeries.length - 1 ? colors.cyan : colors.mutedForeground }]}>
+                    {s.day}
+                  </Text>
+                  <Text style={[styles.sleepVal, { color: colors.foreground }]}>{s.hours.toFixed(1)}h</Text>
+                </View>
+              ))}
+            </View>
+            <View style={[styles.sleepQuality, { backgroundColor: colors.cyan + "12", borderColor: colors.cyan + "33" }]}>
+              <MaterialCommunityIcons name="star-circle" size={16} color={colors.cyan} />
+              <Text style={[styles.sleepQualityText, { color: colors.foreground }]}>
+                Sleep quality:{" "}
+                <Text style={{ color: colors.cyan, fontFamily: "Inter_700Bold" }}>
+                  {latest ? latest.sleepQuality : 0}/100
+                </Text>
+              </Text>
+            </View>
+          </>
+        )}
       </GlowCard>
 
       {/* Energy levels */}
@@ -148,16 +225,30 @@ export default function HealthScreen() {
           <MaterialCommunityIcons name="flash" size={16} color={colors.orange} />
           <Text style={[styles.cardTitle, { color: colors.foreground }]}>ENERGY & VITALS</Text>
         </View>
-        <StatBar label="Active Minutes" value={72} max={120} color={colors.orange} unit="min" />
-        <StatBar label="Hydration" value={6} max={8} color={colors.cyan} unit="cups" />
-        <StatBar label="Stress Level" value={28} max={100} color={colors.green} unit="%" />
-        <StatBar label="Recovery Score" value={84} max={100} color={colors.purple} unit="%" />
+        <StatBar
+          label="Active Minutes"
+          value={health.workouts * 30}
+          max={120}
+          color={colors.orange}
+          unit="min"
+        />
+        <StatBar
+          label="Hydration"
+          value={latest?.waterIntake ?? 0}
+          max={8}
+          color={colors.cyan}
+          unit="cups"
+        />
+        <StatBar label="Heart Rate" value={health.heartRate} max={120} color={colors.pink} unit="bpm" />
+        <StatBar label="Sleep Quality" value={latest?.sleepQuality ?? 0} max={100} color={colors.green} unit="%" />
       </GlowCard>
 
       {/* Quick actions */}
       <View style={styles.actionsRow}>
         <TouchableOpacity
           onPress={handleLogWorkout}
+          accessibilityLabel={loggedWorkout ? 'Workout logged' : 'Log workout'}
+          accessibilityRole="button"
           style={[
             styles.actionBtn,
             {
@@ -174,6 +265,8 @@ export default function HealthScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleMeditation}
+          accessibilityLabel={loggedMeditation ? 'Meditation logged' : 'Meditate'}
+          accessibilityRole="button"
           style={[
             styles.actionBtn,
             {
@@ -190,30 +283,40 @@ export default function HealthScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Workouts */}
+      {/* Recent metrics */}
       <GlowCard glowColor={colors.purple} style={styles.card}>
         <View style={styles.cardHeader}>
-          <MaterialCommunityIcons name="dumbbell" size={16} color={colors.purple} />
-          <Text style={[styles.cardTitle, { color: colors.foreground }]}>RECENT WORKOUTS</Text>
+          <MaterialCommunityIcons name="chart-line" size={16} color={colors.purple} />
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>RECENT METRICS</Text>
         </View>
-        {WORKOUTS.map((w, i) => (
-          <View
-            key={i}
-            style={[styles.workoutRow, { borderBottomColor: colors.border, borderBottomWidth: i < WORKOUTS.length - 1 ? 1 : 0 }]}
-          >
-            <View style={[styles.workoutIcon, { backgroundColor: colors.purple + "22" }]}>
-              <MaterialCommunityIcons name={w.icon} size={18} color={colors.purple} />
+        {metrics.length === 0 ? (
+          <Text style={[styles.emptyNote, { color: colors.mutedForeground }]}>
+            No health metrics recorded yet.
+          </Text>
+        ) : (
+          metrics.slice(0, 5).map((m) => (
+            <View
+              key={m.id}
+              style={[styles.workoutRow, { borderBottomColor: colors.border, borderBottomWidth: m === metrics[0] && metrics.length > 1 ? 1 : 0 }]}
+            >
+              <View style={[styles.workoutIcon, { backgroundColor: colors.purple + "22" }]}>
+                <MaterialCommunityIcons name="heart-pulse" size={18} color={colors.purple} />
+              </View>
+              <View style={styles.workoutInfo}>
+                <Text style={[styles.workoutType, { color: colors.foreground }]}>
+                  {new Date(m.date).toLocaleDateString()}
+                </Text>
+                <Text style={[styles.workoutMeta, { color: colors.mutedForeground }]}>
+                  {m.steps.toLocaleString()} steps · {m.calories} kcal · {m.workouts} workouts
+                </Text>
+              </View>
+              <View style={styles.workoutRight}>
+                <Text style={[styles.workoutCal, { color: colors.orange }]}>{m.heartRate}</Text>
+                <Text style={[styles.workoutCalLabel, { color: colors.mutedForeground }]}>bpm</Text>
+              </View>
             </View>
-            <View style={styles.workoutInfo}>
-              <Text style={[styles.workoutType, { color: colors.foreground }]}>{w.type}</Text>
-              <Text style={[styles.workoutMeta, { color: colors.mutedForeground }]}>{w.date} · {w.duration}</Text>
-            </View>
-            <View style={styles.workoutRight}>
-              <Text style={[styles.workoutCal, { color: colors.orange }]}>{w.cal}</Text>
-              <Text style={[styles.workoutCalLabel, { color: colors.mutedForeground }]}>kcal</Text>
-            </View>
-          </View>
-        ))}
+          ))
+        )}
       </GlowCard>
 
       {/* Achievements */}
@@ -221,7 +324,9 @@ export default function HealthScreen() {
         <View style={styles.cardHeader}>
           <MaterialCommunityIcons name="trophy" size={16} color={colors.warning} />
           <Text style={[styles.cardTitle, { color: colors.foreground }]}>ACHIEVEMENTS</Text>
-          <Text style={[styles.cardSub, { color: colors.warning }]}>3 / 6 earned</Text>
+          <Text style={[styles.cardSub, { color: colors.warning }]}>
+            {ACHIEVEMENTS.filter((a) => a.earned).length} / {ACHIEVEMENTS.length} earned
+          </Text>
         </View>
         <View style={styles.achieveGrid}>
           {ACHIEVEMENTS.map((a, i) => (
@@ -289,4 +394,5 @@ const styles = StyleSheet.create({
   achieveName: { fontSize: 12, fontFamily: "Inter_700Bold", textAlign: "center" },
   achieveDesc: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center" },
   checkBadge: { position: "absolute", top: 8, right: 8 },
+  emptyNote: { fontSize: 13, fontFamily: "Inter_400Regular", paddingVertical: 8 },
 });
