@@ -10,7 +10,7 @@ interface ErrorStateProps {
   title?: string;
   message?: string;
   onRetry?: () => void;
-  icon?: string;
+  icon?: keyof typeof MaterialCommunityIcons.glyphMap;
   retryText?: string;
 }
 
@@ -25,9 +25,9 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
 
   return (
     <View style={styles.container}>
-      <GlowCard style={styles.errorCard} glowColor={colors.error}>
+      <GlowCard style={styles.errorCard} glowColor={colors.destructive}>
         <View style={styles.content}>
-          <MaterialCommunityIcons name={icon} size={64} color={colors.error} />
+          <MaterialCommunityIcons name={icon} size={64} color={colors.destructive} />
           <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
           <Text style={[styles.message, { color: colors.mutedForeground }]}>
             {message}
@@ -37,7 +37,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
               label={retryText}
               onPress={onRetry}
               size="md"
-              color={colors.error}
+              color={colors.destructive}
             />
           )}
         </View>
@@ -51,8 +51,6 @@ interface NetworkErrorStateProps {
 }
 
 export const NetworkErrorState: React.FC<NetworkErrorStateProps> = ({ onRetry }) => {
-  const colors = useColors();
-
   return (
     <ErrorState
       title="Network Error"
@@ -73,8 +71,6 @@ export const DataErrorState: React.FC<DataErrorStateProps> = ({
   onRetry, 
   dataType = 'data' 
 }) => {
-  const colors = useColors();
-
   return (
     <ErrorState
       title={`Failed to load ${dataType}`}
