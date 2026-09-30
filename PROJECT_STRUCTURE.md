@@ -1,223 +1,173 @@
-# HyperVerse Project Structure
+---
+title: Project Structure
+description: Directory map of the HyperVerse repository with the purpose and state of each directory.
+status: pre-release
+last_verified: 2026-09-29
+audience: contributor
+---
 
-```
+# Project Structure
+
+**`pre-release`** · verified `2026-09-29` · ~5 min read
+
+A map of the repository by directory. For a file-by-file inventory, see
+[FOLDER_STRUCTURE.md](FOLDER_STRUCTURE.md).
+
+> [!NOTE]
+> There is **no `src/` directory.** Earlier versions of this document described one; the
+> project is rooted at the repository, with `app/`, `lib/`, and `components/` as top-level
+> directories.
+
+## Contents
+
+1. [Top level](#1-top-level)
+2. [app/](#2-app)
+3. [lib/](#3-lib)
+4. [components/](#4-components)
+5. [Supporting directories](#5-supporting-directories)
+6. [Generated and untracked](#6-generated-and-untracked)
+
+---
+
+## 1. Top level
+
+```text
 HyperVerse/
-├── app/                           # Expo Router pages and navigation
-│   ├── (tabs)/                    # Bottom tab navigation
-│   │   ├── _layout.tsx           # Tab layout configuration
-│   │   ├── index.tsx             # Home/Dashboard screen
-│   │   ├── tasks.tsx             # Task management screen
-│   │   ├── habits.tsx            # Habit tracking screen
-│   │   ├── health.tsx            # Health & fitness screen
-│   │   ├── finance.tsx           # Finance & budgeting screen
-│   │   ├── ai.tsx                # AI assistant screen
-│   │   └── settings.tsx          # Settings screen
-│   ├── ai/                       # AI-related screens
-│   │   ├── chat.tsx              # AI chat interface
-│   │   └── models.tsx            # AI model management
-│   ├── auth/                     # Authentication screens
-│   │   ├── setup.tsx             # Initial setup
-│   │   ├── unlock.tsx            # Biometric unlock
-│   │   └── profiles.tsx          # Profile management
-│   ├── tasks/                    # Task-related screens
-│   │   ├── [id].tsx              # Task detail screen
-│   │   └── new.tsx               # Create new task
-│   ├── habits/                   # Habit-related screens
-│   │   ├── [id].tsx              # Habit detail screen
-│   │   └── new.tsx               # Create new habit
-│   ├── notes/                    # Note-related screens
-│   │   ├── [id].tsx              # Note detail screen
-│   │   └── new.tsx               # Create new note
-│   ├── events/                   # Event-related screens
-│   │   ├── [id].tsx              # Event detail screen
-│   │   └── new.tsx               # Create new event
-│   ├── _layout.tsx               # Root layout with providers
-│   └── +not-found.tsx            # 404 screen
-├── components/                    # Reusable UI components
-│   ├── ui/                       # Base UI components
-│   │   ├── Button.tsx
-│   │   ├── Card.tsx
-│   │   ├── Input.tsx
-│   │   ├── Modal.tsx
-│   │   ├── Toast.tsx
-│   │   └── index.ts
-│   ├── charts/                   # Chart components
-│   │   ├── LineChart.tsx
-│   │   ├── BarChart.tsx
-│   │   ├── PieChart.tsx
-│   │   └── ProgressRing.tsx
-│   ├── forms/                    # Form components
-│   │   ├── TaskForm.tsx
-│   │   ├── HabitForm.tsx
-│   │   ├── NoteForm.tsx
-│   │   └── EventForm.tsx
-│   └── ai/                       # AI-related components
-│       ├── ChatMessage.tsx
-│       ├── TypingIndicator.tsx
-│       └── ModelSelector.tsx
-├── lib/                          # Core business logic
-│   ├── database/                 # Database layer
-│   │   ├── models/               # WatermelonDB models
-│   │   │   ├── User.ts
-│   │   │   ├── Task.ts
-│   │   │   ├── Habit.ts
-│   │   │   ├── Health.ts
-│   │   │   ├── Finance.ts
-│   │   │   ├── Note.ts
-│   │   │   ├── Event.ts
-│   │   │   └── index.ts
-│   │   ├── migrations/           # Database migrations
-│   │   │   ├── 001_initial.ts
-│   │   │   ├── 002_add_ai_chat.ts
-│   │   │   └── index.ts
-│   │   ├── database.ts           # Database configuration
-│   │   └── schema.ts             # Database schema
-│   ├── repositories/             # Data access layer
-│   │   ├── UserRepository.ts
-│   │   ├── TaskRepository.ts
-│   │   ├── HabitRepository.ts
-│   │   ├── HealthRepository.ts
-│   │   ├── FinanceRepository.ts
-│   │   ├── NoteRepository.ts
-│   │   ├── EventRepository.ts
-│   │   └── index.ts
-│   ├── services/                 # Business logic services
-│   │   ├── AuthService.ts
-│   │   ├── AIService.ts
-│   │   ├── NotificationService.ts
-│   │   ├── ExportService.ts
-│   │   └── index.ts
-│   ├── stores/                   # Zustand stores
-│   │   ├── authStore.ts
-│   │   ├── themeStore.ts
-│   │   ├── settingsStore.ts
-│   │   └── index.ts
-│   ├── ai/                       # AI integration
-│   │   ├── models/               # AI model management
-│   │   │   ├── ModelManager.ts
-│   │   │   └── ModelRegistry.ts
-│   │   ├── rag/                  # RAG pipeline
-│   │   │   ├── VectorStore.ts
-│   │   │   ├── EmbeddingService.ts
-│   │   │   └── RetrievalPipeline.ts
-│   │   ├── inference/            # Model inference
-│   │   │   ├── LLMInference.ts
-│   │   │   └── WorkerManager.ts
-│   │   └── prompts/              # AI prompts
-│   │       ├── system.ts
-│   │       ├── task.ts
-│   │       ├── habit.ts
-│   │       └── health.ts
-│   ├── utils/                    # Utility functions
-│   │   ├── date.ts
-│   │   ├── validation.ts
-│   │   ├── encryption.ts
-│   │   ├── storage.ts
-│   │   ├── biometrics.ts
-│   │   └── index.ts
-│   └── constants/                # App constants
-│       ├── app.ts
-│       ├── database.ts
-│       ├── ai.ts
-│       └── theme.ts
-├── hooks/                        # Custom React hooks
-│   ├── useAuth.ts
-│   ├── useDatabase.ts
-│   ├── useAI.ts
-│   ├── useBiometrics.ts
-│   ├── useTheme.ts
-│   ├── useLocalNotifications.ts
-│   └── index.ts
-├── types/                        # TypeScript type definitions
-│   ├── auth.ts
-│   ├── database.ts
-│   ├── ai.ts
-│   ├── navigation.ts
-│   ├── api.ts
-│   └── index.ts
-├── assets/                       # Static assets
-│   ├── images/                   # Images and icons
-│   │   ├── icons/
-│   │   ├── illustrations/
-│   │   └── backgrounds/
-│   ├── fonts/                    # Custom fonts
-│   ├── ai-models/                # AI model files
-│   │   ├── gemma-2b-it/
-│   │   └── embeddings/
-│   └── audio/                    # Sound effects
-├── __tests__/                    # Test files
-│   ├── __mocks__/                # Test mocks
-│   ├── unit/                     # Unit tests
-│   ├── integration/              # Integration tests
-│   └── e2e/                      # E2E tests
-├── .storybook/                   # Storybook configuration
-│   ├── main.ts
-│   ├── preview.ts
-│   └── stories/
-├── scripts/                      # Build and utility scripts
-│   ├── build.js
-│   ├── seed-data.js
-│   └── export-data.js
-├── .github/                      # GitHub configuration
-│   └── workflows/                # CI/CD workflows
-│       ├── test.yml
-│       ├── build.yml
-│       └── deploy.yml
-├── docs/                         # Documentation
-│   ├── api.md
-│   ├── deployment.md
-│   └── development.md
-├── app.json                      # Expo configuration
-├── babel.config.js               # Babel configuration
-├── metro.config.js               # Metro bundler configuration
-├── tsconfig.json                 # TypeScript configuration
-├── jest.config.js                # Jest testing configuration
-├── detox.config.js               # Detox E2E testing configuration
-├── .eslintrc.js                  # ESLint configuration
-├── .prettierrc                   # Prettier configuration
-├── .gitignore                    # Git ignore rules
-└── README.md                     # Project documentation
+├── app/                  Expo Router routes
+├── lib/                  Database, services, stores, AI
+├── components/           Reusable UI components
+├── __tests__/            Jest + Detox specs
+├── constants/            colors.ts
+├── context/              AppContext.tsx (legacy)
+├── hooks/                useColors.ts
+├── scripts/              build.js
+├── server/               serve.js
+├── assets/               images only
+├── docs/                 DEPLOYMENT.md, TESTING.md, STORYBOOK.md
+├── .storybook/           main.ts, preview.tsx, index.tsx, stories/, storybook.requires.ts
+├── .github/              workflows, dependabot, templates
+├── eslint.config.mjs     flat ESLint config
+├── jest.config.js
+├── babel.config.js
+├── metro.config.js
+├── tsconfig.json
+├── app.json              Expo config
+├── package.json
+├── llms.txt              machine-readable index for AI agents
+└── .env.example          template; real .env is gitignored
 ```
 
-## Key Directories Explained
+## 2. app/
 
-### `/app` - Expo Router Pages
-- File-based routing with typed routes
-- Bottom tab navigation in `(tabs)` directory
-- Dynamic routes for entity detail pages
-- Modal and stack navigation support
+File-based routes. `app/_layout.tsx` mounts the providers; the two layout files group routes.
 
-### `/lib` - Core Business Logic
-- **Database**: WatermelonDB models, migrations, and schema
-- **Repositories**: Data access layer with CRUD operations
-- **Services**: Business logic and external integrations
-- **Stores**: Zustand state management
-- **AI**: On-device AI integration with models and RAG
+| Path | Purpose | State |
+| :-- | :-- | :-- |
+| `_layout.tsx` | Providers, Inter font, splash, global redirect | Real |
+| `+not-found.tsx` | 404 route | Real |
+| `(auth)/_layout.tsx` | Auth group layout | Real |
+| `(auth)/setup.tsx` | Onboarding; creates the profile via `AuthService` | Real — **only screen that writes real data** |
+| `(tabs)/_layout.tsx` | `NativeTabLayout`, `ClassicTabLayout`, auth redirect | Real |
+| `(tabs)/index.tsx` | Dashboard | Demo |
+| `(tabs)/tasks.tsx` | Tasks, 579 lines | Demo |
+| `(tabs)/habits.tsx` | Habits | Stub |
+| `(tabs)/health.tsx` | Health metrics | Demo |
+| `(tabs)/finance.tsx` | Finance | Demo |
+| `(tabs)/ai.tsx` | AI chat UI | Demo |
+| `(tabs)/ar.tsx` | AR experience | Demo |
+| `(tabs)/blockchain.tsx` | Blockchain / NFT | Demo |
+| `(tabs)/iot.tsx` | IoT devices | Demo |
+| `(tabs)/social.tsx` | Social feed | Demo |
+| `(tabs)/settings.tsx` | Settings | Stub |
+| `tasks/new.tsx` | Task creation form | Demo |
+| `tasks/[id].tsx` | Task detail | Demo |
 
-### `/components` - Reusable UI
-- **UI**: Base design system components
-- **Charts**: Data visualization components
-- **Forms**: Form components with validation
-- **AI**: AI-specific UI components
+> [!IMPORTANT]
+> No file under `app/` imports `lib/database`. The database is unreachable from the UI. See
+> [ARCHITECTURE §2](ARCHITECTURE.md#2-data-layer).
 
-### `/hooks` - Custom React Hooks
-- Encapsulated business logic
-- Database and AI integration hooks
-- Theme and authentication hooks
+## 3. lib/
 
-### `/types` - TypeScript Definitions
-- Comprehensive type safety
-- API contracts and interfaces
-- Database model types
+```mermaid
+flowchart TD
+    subgraph lib["lib/"]
+        db["database/<br/>schema · adapter · 12 models"]
+        svc["services/<br/>AuthService · BaseService"]
+        stores["stores/<br/>auth · theme · data"]
+        ai["ai/<br/>AIService · ModelManager · VectorStore"]
+        support["storage.ts · logger.ts · constants.ts"]
+    end
 
-### `/__tests__` - Testing Suite
-- Unit tests for business logic
-- Integration tests for data flow
-- E2E tests for user journeys
+    db --- svc
+    db --- stores
+    stores --- support
+    svc --- support
+    ai --- support
 
-This structure supports:
-- **Scalability**: Clear separation of concerns
-- **Maintainability**: Organized codebase with logical grouping
-- **Testability**: Comprehensive testing strategy
-- **Performance**: Optimized bundle sizes and lazy loading
-- **Developer Experience**: Clear conventions and tooling
+    classDef core fill:none,stroke:#2a9d8f
+    class db,svc core
+```
+
+| Path | Contents |
+| :-- | :-- |
+| `database/` | `schema.ts` (12 tables, v1), `database.ts` (adapter, singleton, readiness), `models/` (12 models). No migrations directory. |
+| `services/` | `AuthService.ts` (device ID, biometrics, profile, export), `BaseService.ts` |
+| `stores/` | `authStore`, `themeStore` |
+| `ai/` | `AIService`, `models/ModelManager`, `rag/VectorStore` |
+| `storage.ts` | Safe SecureStore wrappers |
+| `logger.ts` | Levelled logger, optional Sentry |
+| `constants.ts` | App-wide constants |
+
+## 4. components/
+
+| Path | Notes |
+| :-- | :-- |
+| `GlowCard.tsx` | Neon-bordered card; supports `onPress` and optional children |
+| `NeonButton.tsx` | Primary CTA |
+| `ShaderBackground.tsx` | `expo-linear-gradient` + Reanimated. **Not** Skia. |
+| `XPBar.tsx`, `CircularProgress.tsx`, `MiniBarChart.tsx` | Progress and chart primitives |
+| `ErrorBoundary.tsx`, `ErrorFallback.tsx`, `ErrorState.tsx` | Error handling |
+| `GradientCard.tsx`, `StatBar.tsx`, `SkeletonLoader.tsx` | Layout primitives |
+| `IoTDevice.tsx`, `NFTCard.tsx`, `NotificationBadge.tsx`, `LiveTicker.tsx` | Domain widgets |
+| `KeyboardAwareScrollViewCompat.tsx` | Keyboard handling shim |
+| `LazyScreen.tsx` | Lazy-loaded screen wrapper |
+
+There are no `charts/` or `forms/` subdirectories.
+
+## 5. Supporting directories
+
+| Path | Purpose |
+| :-- | :-- |
+| `__tests__/` | `unit/`, `integration/`, `components/`, `database/`, `e2e/` |
+| `constants/colors.ts` | Light and dark palettes consumed by `hooks/useColors.ts` |
+| `hooks/useColors.ts` | Returns the palette for the active colour scheme |
+| `context/AppContext.tsx` | Legacy. Declares a second `UserProfile` type predating `lib/services/AuthService`. Not imported by any screen. |
+| `scripts/build.js` | Static Expo Go build pipeline |
+| `server/serve.js` | Static file server for `static-build/` |
+| `assets/images/` | Icon and splash images. **No `ai-models/` directory exists.** |
+| `.github/` | 3 workflows, `dependabot.yml`, issue and PR templates |
+| `docs/` | [DEPLOYMENT.md](docs/DEPLOYMENT.md), [TESTING.md](docs/TESTING.md) |
+
+## 6. Generated and untracked
+
+| Path | Notes |
+| :-- | :-- |
+| `static-build/` | Build output. Gitignored; excluded from ESLint, Jest, and tsconfig. |
+| `.kilo/worktrees/` | Agent Manager worktrees holding full repo copies. Gitignored; excluded from lint, Jest, and tsconfig. |
+| `android/`, `ios/` | Not committed. Produced by `npx expo prebuild`. |
+| `coverage/` | From `npm run test:coverage` |
+
+> [!WARNING]
+> If you add a worktree or build-output directory, add it to `testPathIgnorePatterns`
+> (`jest.config.js`), the `ignores` list (`eslint.config.mjs`), and `exclude`
+> (`tsconfig.json`). Linting `.kilo/worktrees/` previously reported errors from an unrelated
+> branch copy of the repository.
+
+---
+
+**Status** `pre-release` · **verified** `2026-09-29` · [README](README.md) ·
+[Architecture](ARCHITECTURE.md) · [File inventory](FOLDER_STRUCTURE.md) ·
+[Contributing](CONTRIBUTING.md)
+
+[Edit this page](https://github.com/JahanzaibJameel/HyperVerse/blob/main/PROJECT_STRUCTURE.md) ·
+[Open an issue](https://github.com/JahanzaibJameel/HyperVerse/issues/new)
