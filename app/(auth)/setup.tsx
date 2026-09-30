@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 
 import { useAuthStore } from '@/lib/stores/authStore';
 import AuthService from '@/lib/services/AuthService';
+import { useDatabase } from '@/lib/database/useDatabase';
+import { UserRepository } from '@/lib/database/repositories/UserRepository';
 
 export default function SetupScreen() {
   const [name, setName] = useState('');
@@ -11,10 +13,16 @@ export default function SetupScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { setUser, setLoading } = useAuthStore();
+  const { database: db, isReady } = useDatabase();
 
   const handleSetup = async () => {
     if (!name.trim()) {
       Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+
+    if (!isReady || !db) {
+      Alert.alert('Error', 'Database is not ready. Please try again.');
       return;
     }
 
@@ -24,8 +32,23 @@ export default function SetupScreen() {
 
       const authService = AuthService.getInstance();
       const profile = await authService.createInitialProfile(name.trim(), email.trim() || undefined);
-      
-      setUser(profile);
+
+      // Persist the matching users row in SQLite so domain data can be scoped to it.
+      const user = await UserRepository.upsertFromProfile({
+        deviceId: profile.deviceId,
+        name: profile.name,
+        email: profile.email,
+        avatarUrl: profile.avatarUrl,
+        level: profile.level,
+        xp: profile.xp,
+        xpToNextLevel: profile.xpToNextLevel,
+        streak: profile.streak,
+        tokens: profile.tokens,
+        nfts: profile.nfts,
+        isActive: profile.isActive,
+      });
+
+      setUser({ ...profile, dbId: user.id });
       router.replace('/(tabs)');
     } catch (error) {
       console.error('Setup failed:', error);
@@ -37,47 +60,35 @@ export default function SetupScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Welcome to HyperVerse</Text>
-        <Text style={styles.subtitle}>
-          Your personal life operating system
-        </Text>
+    <View style={[styles.container, { paddingTop: 60 }]}>
+      <Text style={styles.title}>Welcome to HyperVerse</Text>
+      <Text style={styles.subtitle}>Set up your profile to get started</Text>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your name"
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-            maxLength={50}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Email (optional)"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            maxLength={100}
-          />
-
-          <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
-            onPress={handleSetup}
-            disabled={isLoading}
-          >
-            <Text style={styles.buttonText}>
-              {isLoading ? 'Setting up...' : 'Get Started'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.footnote}>
-          All data is stored locally on your device
-        </Text>
+      <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          placeholder="Your name"
+          placeholderTextColor="#64748b"
+          value={name}
+          onChangeText={setName}
+          editable={!isLoading}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Email (optional)"
+          placeholderTextColor="#64748b"
+          value={email}
+          onChangeText={setEmail}
+          editable={!isLoading}
+         keyboardType="email-address"
+        />
+        <TouchableOpacity
+          style={[styles.button, isLoading && styles.buttonDisabled]}
+          onPress={handleSetup}
+          disabled={isLoading}
+        >
+          <Text style={styles.buttonText}>{isLoading ? 'Setting up...' : 'Get Started'}</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -86,60 +97,46 @@ export default function SetupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    width: '90%',
-    maxWidth: 400,
-    alignItems: 'center',
+    backgroundColor: '#060b18',
+    paddingHorizontal: 24,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#00ffff',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#f1f5f9',
     marginBottom: 8,
-    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#888',
-    marginBottom: 40,
-    textAlign: 'center',
+    fontSize: 14,
+    color: '#94a3b8',
+    marginBottom: 32,
   },
   form: {
-    width: '100%',
-    gap: 16,
+    gap: 12,
   },
   input: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#0f1a30',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: '#1e3a5f',
     borderRadius: 12,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
-    color: '#fff',
+    color: '#f1f5f9',
   },
   button: {
-    backgroundColor: '#00ffff',
+    backgroundColor: '#00d4ff',
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
   },
   buttonDisabled: {
-    backgroundColor: '#555',
+    opacity: 0.6,
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  footnote: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 32,
-    textAlign: 'center',
+    fontWeight: '700',
+    color: '#060b18',
   },
 });
