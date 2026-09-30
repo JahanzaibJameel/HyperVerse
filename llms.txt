@@ -1,0 +1,48 @@
+# HyperVerse
+
+> Offline-first personal life-tracking app built with Expo and React Native. No backend:
+> all state lives on the device in SQLite (WatermelonDB), AsyncStorage, and SecureStore.
+>
+> **Status: pre-release.** The data layer, authentication, and AI service are implemented and
+> tested, but the screens are not connected to the database — most of the UI renders hardcoded
+> demo data. Test coverage is 13.88% of statements. Read
+> [Known limitations](README.md#known-limitations) before relying on anything here.
+
+Docs are written against the source as of 2026-09-29. Every number in them is reproducible with
+the command shown beside it.
+
+## Start here
+
+- [README.md](README.md): Project status, verified measurements (typecheck, lint, tests, coverage, bundle sizes), quick start, known limitations.
+- [docs/TESTING.md](docs/TESTING.md): Test layout, Jest configuration, the mocking strategy, and how to add tests.
+
+## Understand the system
+
+- [ARCHITECTURE.md](ARCHITECTURE.md): How the layers fit together, the 12-table schema, the two rules every model must follow, and an explicit intended-vs-actual table.
+- [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md): Directory map, with the implementation state of each route.
+- [FOLDER_STRUCTURE.md](FOLDER_STRUCTURE.md): File-by-file inventory, labelled `Real` / `Demo` / `Stub` / `Unused`.
+
+## Do work on it
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): Setup, the verification gate, the rules ESLint actually enforces, and the WatermelonDB constraints that caused real bugs.
+- [ROADMAP.md](ROADMAP.md): Planned work, ordered by how much each item blocks real use.
+- [ROADMAP_V2.md](ROADMAP_V2.md): Technical-debt register — the structural problems and what fixing them would involve.
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): Community expectations.
+
+## Ship it
+
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): The static Expo Go build, output layout, release process, and troubleshooting.
+- [SECURITY.md](SECURITY.md): Actual threat model, what is and is not implemented, and how to report a vulnerability.
+
+## Reference
+
+- [FINAL_POLISH_SUMMARY.md](FINAL_POLISH_SUMMARY.md): Dated engineering verification record — what was changed to make the build green, and what remains broken.
+- [LAUNCH_BLOG.md](LAUNCH_BLOG.md): Technical write-up on building an offline-first app in Expo.
+
+## Conventions
+
+- TypeScript with `experimentalDecorators` and `useDefineForClassFields: false`, both required by WatermelonDB.
+- Path alias `@/` maps to the repository root.
+- Model mutations must run inside `database.write()`, and `@readonly` fields must never be assigned.
+- `npm run lint` runs with `--fix` and will modify your working tree.
+- `pnpm dev` is Replit-only; use `npx expo start` locally.
