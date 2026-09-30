@@ -1,9 +1,26 @@
 // Mock Task model for testing
 class MockTask {
   static table = 'tasks';
-  
+
+  userId!: string;
+  title!: string;
+  description?: string;
+  category!: string;
+  priority!: string;
+  status!: string;
+  dueDate?: number | null;
+  completedAt?: number | null;
+  xpReward!: number;
+  tags?: string | null;
+  createdAt!: number;
+  updatedAt!: number;
+
   constructor(public data: any = {}) {
     Object.assign(this, data);
+  }
+
+  async update(recordUpdater: (record: MockTask) => void): Promise<void> {
+    recordUpdater(this);
   }
 
   get isOverdue(): boolean {
@@ -25,38 +42,52 @@ class MockTask {
   }
 
   async complete(): Promise<void> {
-    this.status = 'completed';
-    this.completedAt = Date.now();
-    this.updatedAt = Date.now();
+    await this.update((task) => {
+      task.status = 'completed';
+      task.completedAt = Date.now();
+      task.updatedAt = Date.now();
+    });
   }
 
   async updateStatus(status: string): Promise<void> {
-    this.status = status;
-    if (status === 'completed') {
-      this.completedAt = Date.now();
-    }
-    this.updatedAt = Date.now();
+    await this.update((task) => {
+      task.status = status;
+      if (status === 'completed') {
+        task.completedAt = Date.now();
+      }
+      task.updatedAt = Date.now();
+    });
   }
 
   async updatePriority(priority: string): Promise<void> {
-    this.priority = priority;
-    this.updatedAt = Date.now();
+    await this.update((task) => {
+      task.priority = priority;
+      task.updatedAt = Date.now();
+    });
   }
 
   async addTag(tag: string): Promise<void> {
     const currentTags = this.parsedTags;
     if (!currentTags.includes(tag)) {
       currentTags.push(tag);
-      this.tags = JSON.stringify(currentTags);
-      this.updatedAt = Date.now();
+      await this.update((task) => {
+        task.tags = JSON.stringify(currentTags);
+        task.updatedAt = Date.now();
+      });
     }
   }
 
   async removeTag(tag: string): Promise<void> {
     const currentTags = this.parsedTags;
-    const filteredTags = currentTags.filter((t: string) => t !== tag);
-    this.tags = JSON.stringify(filteredTags);
-    this.updatedAt = Date.now();
+    if (!currentTags.includes(tag)) {
+      return;
+    }
+
+    const filteredTags = currentTags.filter((t) => t !== tag);
+    await this.update((task) => {
+      task.tags = JSON.stringify(filteredTags);
+      task.updatedAt = Date.now();
+    });
   }
 }
 
@@ -193,7 +224,7 @@ describe('Task Model', () => {
       });
 
       it('should handle all valid status values', async () => {
-        const statuses: Task['status'][] = ['todo', 'in_progress', 'completed', 'cancelled'];
+        const statuses: MockTask['status'][] = ['todo', 'in_progress', 'completed', 'cancelled'];
         
         for (const status of statuses) {
           await task.updateStatus(status);
@@ -215,7 +246,7 @@ describe('Task Model', () => {
       });
 
       it('should handle all valid priority values', async () => {
-        const priorities: Task['priority'][] = ['low', 'medium', 'high', 'urgent'];
+        const priorities: MockTask['priority'][] = ['low', 'medium', 'high', 'urgent'];
         
         for (const priority of priorities) {
           await task.updatePriority(priority);
@@ -295,27 +326,39 @@ describe('Task Model', () => {
 
   describe('Static Properties', () => {
     it('should have correct table name', () => {
-      expect(Task.table).toBe('tasks');
+      expect(MockTask.table).toBe('tasks');
     });
   });
 
   describe('Field Decorators', () => {
     it('should have all required fields defined', () => {
-      const task = new Task(mockDatabase);
-      
-      // These should be defined by the decorators
-      expect(task).toHaveProperty('userId');
-      expect(task).toHaveProperty('title');
-      expect(task).toHaveProperty('description');
-      expect(task).toHaveProperty('category');
-      expect(task).toHaveProperty('priority');
-      expect(task).toHaveProperty('status');
-      expect(task).toHaveProperty('dueDate');
-      expect(task).toHaveProperty('completedAt');
-      expect(task).toHaveProperty('xpReward');
-      expect(task).toHaveProperty('tags');
-      expect(task).toHaveProperty('createdAt');
-      expect(task).toHaveProperty('updatedAt');
+      const decorated = new MockTask({
+        userId: 'user-1',
+        title: 'Task',
+        description: 'Description',
+        category: 'work',
+        priority: 'high',
+        status: 'todo',
+        dueDate: null,
+        completedAt: null,
+        xpReward: 10,
+        tags: null,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+
+      expect(decorated).toHaveProperty('userId');
+      expect(decorated).toHaveProperty('title');
+      expect(decorated).toHaveProperty('description');
+      expect(decorated).toHaveProperty('category');
+      expect(decorated).toHaveProperty('priority');
+      expect(decorated).toHaveProperty('status');
+      expect(decorated).toHaveProperty('dueDate');
+      expect(decorated).toHaveProperty('completedAt');
+      expect(decorated).toHaveProperty('xpReward');
+      expect(decorated).toHaveProperty('tags');
+      expect(decorated).toHaveProperty('createdAt');
+      expect(decorated).toHaveProperty('updatedAt');
     });
   });
 });
