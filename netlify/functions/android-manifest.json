@@ -1,0 +1,89 @@
+{
+  "id": "5302f0e2-97cc-466a-921b-36ae2b16753e",
+  "createdAt": "2026-09-29T13:13:51.189Z",
+  "runtimeVersion": "exposdk:54.0.0",
+  "launchAsset": {
+    "key": "bundle-1790687631189-18544",
+    "contentType": "application/javascript",
+    "url": "https://localhost/1790687631189-18544/_expo/static/js/android/bundle.js"
+  },
+  "assets": [],
+  "metadata": {},
+  "extra": {
+    "eas": {},
+    "expoClient": {
+      "name": "HyperVerse",
+      "slug": "hyperverse",
+      "version": "1.0.0",
+      "orientation": "portrait",
+      "icon": "./assets/images/icon.png",
+      "scheme": "hyperverse",
+      "userInterfaceStyle": "dark",
+      "newArchEnabled": true,
+      "splash": {
+        "image": "./assets/images/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#060b18",
+        "imageUrl": "http://127.0.0.1:8081/assets/./assets/images/splash-icon.png"
+      },
+      "ios": {
+        "supportsTablet": false
+      },
+      "android": {},
+      "web": {
+        "favicon": "./assets/images/icon.png"
+      },
+      "plugins": [
+        [
+          "expo-router",
+          {
+            "origin": "https://replit.com/"
+          }
+        ],
+        "expo-font"
+      ],
+      "experiments": {
+        "typedRoutes": true,
+        "reactCompiler": true
+      },
+      "_internal": {
+        "isDebug": false,
+        "projectRoot": "D:\\reactnative\\HyperVerse",
+        "dynamicConfigPath": {},
+        "staticConfigPath": "D:\\reactnative\\HyperVerse\\app.json",
+        "packageJsonPath": "D:\\reactnative\\HyperVerse\\package.json",
+        "pluginHistory": {
+          "expo-font": {
+            "name": "expo-font",
+            "version": "14.0.11"
+          }
+        }
+      },
+      "sdkVersion": "54.0.0",
+      "platforms": [
+        "ios",
+        "android",
+        "web"
+      ],
+      "extra": {
+        "router": {
+          "origin": "https://replit.com/"
+        }
+      },
+      "iconUrl": "http://127.0.0.1:8081/assets/./assets/images/icon.png",
+      "hostUri": "localhost/android"
+    },
+    "expoGo": {
+      "debuggerHost": "localhost/android",
+      "developer": {
+        "tool": "expo-cli",
+        "projectRoot": "D:\\reactnative\\HyperVerse"
+      },
+      "packagerOpts": {
+        "dev": false
+      },
+      "mainModuleName": "node_modules/.pnpm/expo-router@6.0.23_y4pwfsfzbyh2pgdargffyyr7ze/node_modules/expo-router/entry"
+    },
+    "scopeKey": "@anonymous/hyperverse-34449d11-ed74-4523-9ae1-2046b2e7973a"
+  }
+}
