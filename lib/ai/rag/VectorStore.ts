@@ -1,7 +1,6 @@
-import { Database } from 'lancedb';
 import * as FileSystem from 'expo-file-system';
 
-import { ModelManager } from '../models/ModelManager';
+import ModelManager from '../models/ModelManager';
 
 export interface VectorDocument {
   id: string;
@@ -22,14 +21,23 @@ export interface SearchResult {
   score: number;
 }
 
+interface StoredDocument extends VectorDocument {
+  embedding: number[];
+}
+
+const VECTOR_DB_DIR_NAME = 'vector-db';
+const VECTOR_DB_FILE_NAME = 'documents.json';
+
 class VectorStore {
   private static instance: VectorStore;
-  private db: Database | null = null;
+  private documents: StoredDocument[] = [];
   private modelManager: ModelManager;
-  private readonly VECTOR_DB_PATH = `${FileSystem.documentDirectory}vector-db/`;
+  private initialized = false;
+  private readonly VECTOR_DB_PATH: string;
 
   private constructor() {
     this.modelManager = ModelManager.getInstance();
+    this.VECTOR_DB_PATH = `${FileSystem.documentDirectory ?? ''}${VECTOR_DB_DIR_NAME}/`;
   }
 
   static getInstance(): VectorStore {
@@ -39,14 +47,19 @@ class VectorStore {
     return VectorStore.instance;
   }
 
-  async initialize(): Promise<void> {
-    try {
-      // Ensure vector DB directory exists
-      await this.ensureVectorDBDirectory();
+  get storagePath(): string {
+    return `${this.VECTOR_DB_PATH}${VECTOR_DB_FILE_NAME}`;
+  }
 
-      // Initialize LanceDB
-      this.db = await Database.connect(this.VECTOR_DB_PATH);
-      
+  async initialize(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
+
+    try {
+      await this.ensureVectorDBDirectory();
+      await this.loadDocuments();
+      this.initialized = true;
       console.log('Vector store initialized successfully');
     } catch (error) {
       console.error('Failed to initialize vector store:', error);
@@ -61,24 +74,36 @@ class VectorStore {
     }
   }
 
-  async addDocument(document: VectorDocument): Promise<void> {
-    if (!this.db) {
-      await this.initialize();
+  private async loadDocuments(): Promise<void> {
+    const fileInfo = await FileSystem.getInfoAsync(this.storagePath);
+    if (!fileInfo.exists) {
+      this.documents = [];
+      return;
     }
 
+    const raw = await FileSystem.readAsStringAsync(this.storagePath);
+    const parsed = JSON.parse(raw) as StoredDocument[];
+    this.documents = Array.isArray(parsed) ? parsed : [];
+  }
+
+  private async persistDocuments(): Promise<void> {
+    await FileSystem.writeAsStringAsync(this.storagePath, JSON.stringify(this.documents));
+  }
+
+  private async ensureInitialized(): Promise<void> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+  }
+
+  async addDocument(document: VectorDocument): Promise<void> {
     try {
-      // Generate embedding for the document
+      await this.ensureInitialized();
       const embedding = await this.generateEmbedding(document.content);
-      
-      const documentWithEmbedding = {
-        ...document,
-        embedding,
-      };
-
-      // Store in vector database
-      const table = await this.getOrCreateTable('documents');
-      await table.add([documentWithEmbedding]);
-
+      const stored: StoredDocument = { ...document, embedding };
+      this.documents = this.documents.filter((d) => d.id !== document.id);
+      this.documents.push(stored);
+      await this.persistDocuments();
       console.log(`Document added: ${document.id}`);
     } catch (error) {
       console.error('Failed to add document:', error);
@@ -87,22 +112,21 @@ class VectorStore {
   }
 
   async addDocuments(documents: VectorDocument[]): Promise<void> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
     try {
-      // Generate embeddings for all documents
-      const documentsWithEmbeddings = await Promise.all(
+      await this.ensureInitialized();
+      const documentsWithEmbeddings: StoredDocument[] = await Promise.all(
         documents.map(async (doc) => ({
           ...doc,
           embedding: await this.generateEmbedding(doc.content),
         }))
       );
 
-      // Store in vector database
-      const table = await this.getOrCreateTable('documents');
-      await table.add(documentsWithEmbeddings);
+      const incomingIds = new Set(documentsWithEmbeddings.map((d) => d.id));
+      this.documents = [
+        ...this.documents.filter((d) => !incomingIds.has(d.id)),
+        ...documentsWithEmbeddings,
+      ];
+      await this.persistDocuments();
 
       console.log(`Added ${documents.length} documents to vector store`);
     } catch (error) {
@@ -116,58 +140,56 @@ class VectorStore {
     limit: number = 10,
     filters?: Partial<VectorDocument['metadata']>
   ): Promise<SearchResult[]> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
     try {
-      // Generate embedding for query
+      await this.ensureInitialized();
       const queryEmbedding = await this.generateEmbedding(query);
 
-      // Get table
-      const table = await this.getOrCreateTable('documents');
+      const candidates = filters
+        ? this.documents.filter((doc) => this.matchesFilters(doc, filters))
+        : this.documents;
 
-      // Build search query
-      let searchQuery = table.search(queryEmbedding).limit(limit);
-
-      // Apply filters if provided
-      if (filters) {
-        if (filters.type) {
-          searchQuery = searchQuery.where('metadata.type', '=', filters.type);
-        }
-        if (filters.userId) {
-          searchQuery = searchQuery.where('metadata.userId', '=', filters.userId);
-        }
-        if (filters.category) {
-          searchQuery = searchQuery.where('metadata.category', '=', filters.category);
-        }
-      }
-
-      // Execute search
-      const results = await searchQuery.toArray();
-
-      return results.map((result: any) => ({
-        document: {
-          id: result.id,
-          content: result.content,
-          metadata: result.metadata,
-        },
-        score: result._distance || 0,
-      }));
+      return candidates
+        .map((doc) => ({
+          document: {
+            id: doc.id,
+            content: doc.content,
+            metadata: doc.metadata,
+          },
+          score: cosineSimilarity(queryEmbedding, doc.embedding),
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
     } catch (error) {
       console.error('Search failed:', error);
       return [];
     }
   }
 
-  async deleteDocument(documentId: string): Promise<void> {
-    if (!this.db) {
-      await this.initialize();
+  private matchesFilters(
+    doc: StoredDocument,
+    filters: Partial<VectorDocument['metadata']>
+  ): boolean {
+    if (filters.userId !== undefined && doc.metadata.userId !== filters.userId) {
+      return false;
     }
+    if (filters.type !== undefined && doc.metadata.type !== filters.type) {
+      return false;
+    }
+    if (filters.category !== undefined && doc.metadata.category !== filters.category) {
+      return false;
+    }
+    return true;
+  }
 
+  async deleteDocument(documentId: string): Promise<void> {
     try {
-      const table = await this.getOrCreateTable('documents');
-      await table.delete(`id = '${documentId}'`);
+      await this.ensureInitialized();
+      const before = this.documents.length;
+      this.documents = this.documents.filter((d) => d.id !== documentId);
+      if (this.documents.length === before) {
+        return;
+      }
+      await this.persistDocuments();
       console.log(`Document deleted: ${documentId}`);
     } catch (error) {
       console.error('Failed to delete document:', error);
@@ -176,27 +198,16 @@ class VectorStore {
   }
 
   async updateDocument(document: VectorDocument): Promise<void> {
-    // Delete old document and add new one
     await this.deleteDocument(document.id);
     await this.addDocument(document);
   }
 
   async getUserDocuments(userId: string): Promise<VectorDocument[]> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
     try {
-      const table = await this.getOrCreateTable('documents');
-      const results = await table
-        .where('metadata.userId', '=', userId)
-        .toArray();
-
-      return results.map((result: any) => ({
-        id: result.id,
-        content: result.content,
-        metadata: result.metadata,
-      }));
+      await this.ensureInitialized();
+      return this.documents
+        .filter((doc) => doc.metadata.userId === userId)
+        .map(({ id, content, metadata }) => ({ id, content, metadata }));
     } catch (error) {
       console.error('Failed to get user documents:', error);
       return [];
@@ -204,13 +215,10 @@ class VectorStore {
   }
 
   async clearUserData(userId: string): Promise<void> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
     try {
-      const table = await this.getOrCreateTable('documents');
-      await table.delete(`metadata.userId = '${userId}'`);
+      await this.ensureInitialized();
+      this.documents = this.documents.filter((doc) => doc.metadata.userId !== userId);
+      await this.persistDocuments();
       console.log(`Cleared all documents for user: ${userId}`);
     } catch (error) {
       console.error('Failed to clear user data:', error);
@@ -223,26 +231,20 @@ class VectorStore {
     documentsByType: Record<string, number>;
     storageSize: number;
   }> {
-    if (!this.db) {
-      await this.initialize();
-    }
-
     try {
-      const table = await this.getOrCreateTable('documents');
-      const allDocuments = await table.toArray();
+      await this.ensureInitialized();
 
       const documentsByType: Record<string, number> = {};
-      for (const doc of allDocuments) {
+      for (const doc of this.documents) {
         const type = doc.metadata?.type || 'unknown';
         documentsByType[type] = (documentsByType[type] || 0) + 1;
       }
 
-      // Get storage size
-      const storageInfo = await FileSystem.getInfoAsync(this.VECTOR_DB_PATH);
-      const storageSize = storageInfo.size || 0;
+      const storageInfo = await FileSystem.getInfoAsync(this.storagePath);
+      const storageSize = storageInfo.exists && 'size' in storageInfo ? storageInfo.size ?? 0 : 0;
 
       return {
-        totalDocuments: allDocuments.length,
+        totalDocuments: this.documents.length,
         documentsByType,
         storageSize,
       };
@@ -269,38 +271,40 @@ class VectorStore {
 
     try {
       const result = await pipeline(text, { pooling: 'mean', normalize: true });
-      return Array.from(result.data);
+      return Array.from(result.data as ArrayLike<number>);
     } catch (error) {
       console.error('Failed to generate embedding:', error);
       throw new Error(`Embedding generation failed: ${error}`);
     }
   }
 
-  private async getOrCreateTable(tableName: string) {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-
-    try {
-      // Try to open existing table
-      return await this.db.openTable(tableName);
-    } catch (error) {
-      // Table doesn't exist, create it
-      return await this.db.createTable(tableName, [
-        { name: 'id', type: 'string' },
-        { name: 'content', type: 'string' },
-        { name: 'metadata', type: 'string' },
-        { name: 'embedding', type: 'vector', size: 384 }, // MiniLM-L6-v2 produces 384-dimensional embeddings
-      ]);
-    }
-  }
-
   async close(): Promise<void> {
-    if (this.db) {
-      await this.db.close();
-      this.db = null;
-    }
+    this.documents = [];
+    this.initialized = false;
   }
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  const length = Math.min(a.length, b.length);
+  if (length === 0) {
+    return 0;
+  }
+
+  let dotProduct = 0;
+  let magnitudeA = 0;
+  let magnitudeB = 0;
+
+  for (let i = 0; i < length; i++) {
+    dotProduct += a[i] * b[i];
+    magnitudeA += a[i] * a[i];
+    magnitudeB += b[i] * b[i];
+  }
+
+  if (magnitudeA === 0 || magnitudeB === 0) {
+    return 0;
+  }
+
+  return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
 }
 
 export default VectorStore;
