@@ -29,7 +29,7 @@ export function NotificationBadge() {
       ]).start();
     }, 8000);
     return () => clearInterval(t);
-  }, []);
+  }, [shake]);
 
   const handleOpen = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
