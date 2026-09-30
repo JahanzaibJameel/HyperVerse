@@ -24,11 +24,23 @@ jest.mock('expo-crypto', () => ({
   },
 }));
 
-jest.mock('expo-secure-store', () => ({
-  getItemAsync: jest.fn(() => Promise.resolve(null)),
-  setItemAsync: jest.fn(() => Promise.resolve()),
-  deleteItemAsync: jest.fn(() => Promise.resolve()),
-}));
+// SecureStore has no native module under Jest; back it with an in-memory map so
+// round-trips (save then load) behave like the real thing.
+jest.mock('expo-secure-store', () => {
+  let store = {};
+  return {
+    getItemAsync: jest.fn((key) => Promise.resolve(store[key] ?? null)),
+    setItemAsync: jest.fn((key, value) => {
+      store[key] = value;
+      return Promise.resolve();
+    }),
+    deleteItemAsync: jest.fn((key) => {
+      delete store[key];
+      return Promise.resolve();
+    }),
+    isAvailableAsync: jest.fn(() => Promise.resolve(true)),
+  };
+});
 
 jest.mock('expo-local-authentication', () => ({
   hasHardwareAsync: jest.fn(() => Promise.resolve(true)),
@@ -49,20 +61,61 @@ jest.mock('expo-file-system', () => ({
   })),
 }));
 
-// Mock WatermelonDB
-jest.mock('@nozbe/watermelondb', () => ({
-  Database: jest.fn(() => ({
-    write: jest.fn((fn) => fn()),
-    read: jest.fn((fn) => fn()),
-    adapter: {
-      isReady: true,
+// AsyncStorage has no native module under Jest.
+jest.mock('@react-native-async-storage/async-storage', () => {
+  let store = {};
+  return {
+    __esModule: true,
+    default: {
+      getItem: jest.fn((key) => Promise.resolve(store[key] ?? null)),
+      setItem: jest.fn((key, value) => {
+        store[key] = value;
+        return Promise.resolve();
+      }),
+      removeItem: jest.fn((key) => {
+        delete store[key];
+        return Promise.resolve();
+      }),
+      clear: jest.fn(() => {
+        store = {};
+        return Promise.resolve();
+      }),
+      getAllKeys: jest.fn(() => Promise.resolve(Object.keys(store))),
+      multiGet: jest.fn((keys) =>
+        Promise.resolve(keys.map((key) => [key, store[key] ?? null]))
+      ),
+      multiSet: jest.fn((pairs) => {
+        pairs.forEach(([key, value]) => {
+          store[key] = value;
+        });
+        return Promise.resolve();
+      }),
     },
-  })),
-  Model: jest.fn(() => ({})),
-  field: jest.fn(),
-  date: jest.fn(),
-  readonly: jest.fn(),
-}));
+  };
+});
+
+// WatermelonDB's core (schema, models, decorators, query engine) is pure JS, but
+// the SQLite adapter needs a native module that is absent under Jest. Swap in the
+// bundled pure-JS LokiJS adapter so database tests exercise real query behavior
+// instead of a hollow stub.
+jest.mock('@nozbe/watermelondb/adapters/sqlite', () => {
+  const LokiJSAdapter =
+    require('@nozbe/watermelondb/adapters/lokijs').default ||
+    require('@nozbe/watermelondb/adapters/lokijs');
+
+  return {
+    __esModule: true,
+    default: class TestSQLiteAdapter extends LokiJSAdapter {
+      constructor(options) {
+        super({
+          ...options,
+          useWebWorker: false,
+          useIncrementalIndexedDB: false,
+        });
+      }
+    },
+  };
+});
 
 // Mock Transformers.js
 jest.mock('@xenova/transformers', () => ({
@@ -73,28 +126,5 @@ jest.mock('@xenova/transformers', () => ({
     localModelPath: '/mock/models/',
     allowRemoteModels: false,
     allowLocalModels: true,
-  },
-}));
-
-// Mock LanceDB
-jest.mock('lancedb', () => ({
-  Database: {
-    connect: jest.fn(() => Promise.resolve({
-      openTable: jest.fn(() => Promise.resolve({
-        add: jest.fn(),
-        delete: jest.fn(),
-        toArray: jest.fn(() => Promise.resolve([])),
-        where: jest.fn(() => ({
-          toArray: jest.fn(() => Promise.resolve([])),
-        })),
-        search: jest.fn(() => ({
-          limit: jest.fn(() => ({
-            toArray: jest.fn(() => Promise.resolve([])),
-          })),
-        })),
-      })),
-      createTable: jest.fn(() => Promise.resolve()),
-      close: jest.fn(() => Promise.resolve()),
-    })),
   },
 }));
