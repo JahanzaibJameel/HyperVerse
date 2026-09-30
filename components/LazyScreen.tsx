@@ -1,5 +1,6 @@
 import React, { Suspense } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+
 import { useColors } from '@/hooks/useColors';
 
 interface LazyScreenProps {
