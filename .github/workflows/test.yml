@@ -29,5 +29,39 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # `lint` is check-only, so a regression fails here rather than being
+      # silently auto-fixed in CI.
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
       - name: Run tests
         run: pnpm test -- --passWithNoTests
+
+      - name: Coverage
+        run: pnpm test:coverage
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Advisory only: a high-severity advisory should not be able to block an
+      # unrelated fix, but it must be visible on every run.
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
