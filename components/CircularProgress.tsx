@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Platform, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 
 import { useColors } from "@/hooks/useColors";
@@ -38,7 +38,7 @@ export function CircularProgress({
       duration: 1200,
       useNativeDriver: false,
     }).start();
-  }, [pct]);
+  }, [progress, pct]);
 
   const strokeDashoffset = progress.interpolate({
     inputRange: [0, 1],
