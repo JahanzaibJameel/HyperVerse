@@ -1,4 +1,4 @@
-import { Model } from '@nozbe/watermelondb';
+import { Model, Query } from '@nozbe/watermelondb';
 import { field, date, readonly, relation, children } from '@nozbe/watermelondb/decorators';
 
 import { User } from './User';
@@ -9,7 +9,7 @@ export class Habit extends Model {
 
   static associations = {
     user: { type: 'belongs_to' as const, key: 'user_id' },
-    entries: { type: 'has_many' as const, foreignKey: 'habit_id' },
+    habit_entries: { type: 'has_many' as const, foreignKey: 'habit_id' },
   };
 
   @field('user_id') userId!: string;
@@ -25,8 +25,8 @@ export class Habit extends Model {
   @readonly @date('created_at') createdAt!: number;
   @readonly @date('updated_at') updatedAt!: number;
 
-  @relation('habits', 'user_id') user!: User;
-  @children('entries') entries!: HabitEntry[];
+  @relation('users', 'user_id') user!: User;
+  @children('habit_entries') entries!: Query<HabitEntry>;
 
   get isDaily(): boolean {
     return this.frequency === 'daily';
