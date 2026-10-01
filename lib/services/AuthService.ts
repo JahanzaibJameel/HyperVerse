@@ -36,6 +36,28 @@ export interface BiometricResult {
   biometryType?: any; // Using any for compatibility across platforms
 }
 
+/**
+ * Outcome of an app-unlock attempt.
+ *
+ * This is deliberately a discriminated result rather than a thrown error: a user
+ * cancelling the biometric sheet is a normal, expected outcome and must never
+ * surface as an exception. `unlocked` is the only value that may grant access.
+ *
+ * - `not-required` — app lock is switched off, so nothing is gated. Access is
+ *   granted, but only because the user opted out of locking the app.
+ * - `biometric`    — app lock is on and the user passed the system check.
+ * - `cancelled`    — the user dismissed the prompt. Not an error.
+ * - `failed`       — the system check ran and rejected (wrong finger, too many
+ *                    attempts). The user should be offered a retry.
+ * - `unavailable`  — app lock is on but the device has no enrolled biometrics and
+ *                    no usable passcode. The caller must NOT grant access.
+ */
+export type LockedReason = Extract<AppUnlockResult, { status: 'locked' }>['reason'];
+
+export type AppUnlockResult =
+  | { status: 'unlocked'; reason: 'not-required' | 'biometric' }
+  | { status: 'locked'; reason: 'cancelled' | 'failed' | 'unavailable'; error?: string };
+
 class AuthService {
   private static instance: AuthService;
   private readonly DEVICE_ID_KEY = 'hv_device_id';
@@ -190,7 +212,9 @@ class AuthService {
         disableDeviceFallback: false,
       });
 
-      return { success: result.success };
+      // `error` must be surfaced: it is the only signal that distinguishes a
+      // user dismissal from a genuine rejection.
+      return { success: result.success, error: result.error };
     } catch (error) {
       return { 
         success: false, 
@@ -300,23 +324,56 @@ class AuthService {
   }
 
   /**
-   * Authenticate for app access
+   * Authenticate for app access.
+   *
+   * Callers must treat `status: 'unlocked'` as the *only* success. This never
+   * throws: cancelling the prompt resolves to `{ status: 'locked', reason:
+   * 'cancelled' }`, and a device that cannot verify the user resolves to
+   * `unavailable` rather than silently granting access.
    */
-  async authenticateForApp(): Promise<boolean> {
-    const appLockEnabled = await this.isAppLockEnabled();
-    if (!appLockEnabled) {
-      return true; // No authentication required
-    }
+  async authenticateForApp(): Promise<AppUnlockResult> {
+    try {
+      const appLockEnabled = await this.isAppLockEnabled();
+      if (!appLockEnabled) {
+        return { status: 'unlocked', reason: 'not-required' };
+      }
 
-    const biometricEnabled = await this.isBiometricAuthEnabled();
-    if (biometricEnabled) {
-      const result = await this.authenticateWithBiometrics(
-        'Unlock HyperVerse'
-      );
-      return result.success;
-    }
+      const biometricEnabled = await this.isBiometricAuthEnabled();
+      if (!biometricEnabled) {
+        // App lock is on but the verification method was switched off or its
+        // enrolment disappeared. Fail closed rather than letting the user in.
+        return {
+          status: 'locked',
+          reason: 'unavailable',
+          error: 'App lock is enabled but no biometric credential is enrolled.',
+        };
+      }
 
-    return false;
+      const result = await this.authenticateWithBiometrics('Unlock HyperVerse');
+
+      if (result.success) {
+        return { status: 'unlocked', reason: 'biometric' };
+      }
+
+      // `LocalAuthentication` reports a user dismissal through
+      // `authenticateAsync` resolving `{ success: false, error: 'user_cancel' }`
+      // rather than by throwing, so the distinction has to be made on the error
+      // string.
+      const error = result.error ?? '';
+      const cancelled = /user[_ ]?cancel/i.test(error);
+
+      return cancelled
+        ? { status: 'locked', reason: 'cancelled' }
+        : { status: 'locked', reason: 'failed', error: result.error };
+    } catch (error) {
+      // A throw here means the auth layer itself misbehaved. Report it as a
+      // failure that blocks access instead of granting it.
+      return {
+        status: 'locked',
+        reason: 'failed',
+        error: error instanceof Error ? error.message : 'Authentication failed',
+      };
+    }
   }
 
   /**
