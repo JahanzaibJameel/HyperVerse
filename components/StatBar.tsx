@@ -15,7 +15,10 @@ interface StatBarProps {
 export function StatBar({ label, value, max, color, unit }: StatBarProps) {
   const colors = useColors();
   const progress = useRef(new Animated.Value(0)).current;
-  const pct = Math.min(value / max, 1);
+  // `max` is 0 whenever a domain has no data yet (a new user has no income), and
+  // `value / 0` is NaN, which would animate the bar to NaN and leave it blank.
+  const hasMax = Number.isFinite(max) && max > 0;
+  const pct = hasMax ? Math.min(Math.max(value / max, 0), 1) : 0;
 
   useEffect(() => {
     Animated.timing(progress, {
