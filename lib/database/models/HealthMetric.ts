@@ -22,7 +22,7 @@ export class HealthMetric extends Model {
   @field('water_intake') waterIntake!: number | null;
   @readonly @date('created_at') createdAt!: number;
 
-  @relation('health_metrics', 'user_id') user!: User;
+  @relation('users', 'user_id') user!: User;
 
   get stepsProgress(): number {
     return this.stepsGoal > 0 ? this.steps / this.stepsGoal : 0;
