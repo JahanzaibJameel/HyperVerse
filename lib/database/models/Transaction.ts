@@ -21,7 +21,7 @@ export class Transaction extends Model {
   @readonly @date('created_at') createdAt!: number;
   @readonly @date('updated_at') updatedAt!: number;
 
-  @relation('transactions', 'user_id') user!: User;
+  @relation('users', 'user_id') user!: User;
 
   get isIncome(): boolean {
     return this.type === 'income';
