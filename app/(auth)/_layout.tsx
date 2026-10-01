@@ -4,13 +4,16 @@ import { Redirect } from 'expo-router';
 import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function AuthLayout() {
-  const { user, isLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading } = useAuthStore();
 
-  // If user is already authenticated, redirect to main app
-  if (user && !isLoading) {
+  // Only an *unlocked* session may enter the app. Gating on `user` alone would
+  // let a hydrated profile bypass the lock screen.
+  if (isAuthenticated && !isLoading) {
     return <Redirect href="/(tabs)" />;
   }
 
+  // A returning user who has an account but has not unlocked goes to the unlock
+  // screen; a first-run user goes to setup.
   return (
     <Stack
       screenOptions={{
@@ -19,6 +22,7 @@ export default function AuthLayout() {
       }}
     >
       <Stack.Screen name="setup" options={{ headerShown: false }} />
+      <Stack.Screen name="unlock" options={{ headerShown: false }} />
     </Stack>
   );
 }
