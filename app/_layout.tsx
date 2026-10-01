@@ -7,58 +7,18 @@ import {
 } from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { RootLayoutNavGate } from '@/components/auth/RootLayoutNavGate';
 import { AppProvider } from '@/context/AppContext';
-import { useAuthStore } from '@/lib/stores/authStore';
-import AuthService from '@/lib/services/AuthService';
 
 SplashScreen.preventAutoHideAsync();
 
-function RootLayoutNav() {
-  const [isInitialized, setIsInitialized] = useState(false);
-  const { setUser, setLoading } = useAuthStore();
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const initializeApp = async () => {
-      try {
-        setLoading(true);
-
-        const profile = await AuthService.getInstance().loadUserProfile();
-
-        if (!cancelled && profile) {
-          setUser(profile);
-        }
-      } catch (error) {
-        console.error('App initialization failed:', error);
-      } finally {
-        if (!cancelled) {
-          // The splash screen is released even when the profile read failed, so a
-          // SecureStore or SQLite error lands the user on the login screen
-          // instead of a permanently blank screen.
-          setIsInitialized(true);
-          setLoading(false);
-        }
-      }
-    };
-
-    initializeApp();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [setUser, setLoading]);
-
-  if (!isInitialized) {
-    return null; // Show splash screen
-  }
-
+function RootNavigator() {
   return (
     <Stack
       screenOptions={{
@@ -99,7 +59,14 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <KeyboardProvider>
             <AppProvider>
-              <RootLayoutNav />
+              {/*
+                Nothing renders until `authenticateForApp` has run. A stored
+                profile is not authorisation, so this gate must stay in front of
+                the router for the app not to open straight into `(tabs)`.
+              */}
+              <RootLayoutNavGate>
+                <RootNavigator />
+              </RootLayoutNavGate>
             </AppProvider>
           </KeyboardProvider>
         </GestureHandlerRootView>
