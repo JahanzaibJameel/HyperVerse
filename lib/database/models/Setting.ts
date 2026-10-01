@@ -17,7 +17,7 @@ export class Setting extends Model {
   @field('category') category!: 'theme' | 'notifications' | 'privacy' | 'ai' | 'general';
   @readonly @date('updated_at') updatedAt!: number;
 
-  @relation('settings', 'user_id') user!: User;
+  @relation('users', 'user_id') user!: User;
 
   get parsedValue(): any {
     try {
