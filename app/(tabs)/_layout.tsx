@@ -13,11 +13,12 @@ import { useAuthStore } from "@/lib/stores/authStore";
 import { useThemeStore } from "@/lib/stores/themeStore";
 
 function NativeTabLayout() {
-  const { user, isLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading } = useAuthStore();
 
-  // Redirect to auth if not authenticated
-  if (!user && !isLoading) {
-    return <Redirect href="/(auth)/setup" />;
+  // Gate on the unlocked flag, not on the presence of a profile. A persisted
+  // profile is not authorisation.
+  if (!isAuthenticated && !isLoading) {
+    return <Redirect href={user ? "/(auth)/unlock" : "/(auth)/setup"} />;
   }
 
   return (
@@ -61,15 +62,15 @@ function TabIcon({ name, color }: { name: keyof typeof MaterialCommunityIcons.gl
 function ClassicTabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
-  const { user, isLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading } = useAuthStore();
   const { accentColor } = useThemeStore();
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
 
-  // Redirect to auth if not authenticated
-  if (!user && !isLoading) {
-    return <Redirect href="/(auth)/setup" />;
+  // Redirect to auth if not unlocked
+  if (!isAuthenticated && !isLoading) {
+    return <Redirect href={user ? "/(auth)/unlock" : "/(auth)/setup"} />;
   }
 
   const getAccentColor = (color: string): string => {
