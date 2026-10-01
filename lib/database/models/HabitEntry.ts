@@ -19,8 +19,8 @@ export class HabitEntry extends Model {
   @field('notes') notes!: string | null;
   @readonly @date('created_at') createdAt!: number;
 
-  @relation('habit_entries', 'habit_id') habit!: Habit;
-  @relation('habit_entries', 'user_id') user!: User;
+  @relation('habits', 'habit_id') habit!: Habit;
+  @relation('users', 'user_id') user!: User;
 
   async toggleComplete(): Promise<void> {
     await this.update((entry) => {
