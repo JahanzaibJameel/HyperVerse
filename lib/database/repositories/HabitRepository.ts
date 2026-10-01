@@ -22,6 +22,17 @@ export interface HabitEntryInput {
   notes?: string | null;
 }
 
+/**
+ * Collapse a timestamp to the start of its local day. `habit_entries.date` is a
+ * day bucket, so every read and write of it has to use the same boundary or an
+ * exact-match query will never find the row again.
+ */
+const startOfLocalDay = (timestamp: number = Date.now()): number => {
+  const day = new Date(timestamp);
+  day.setHours(0, 0, 0, 0);
+  return day.getTime();
+};
+
 export const HabitRepository = {
   async findByUser(userId: string): Promise<Habit[]> {
     return database
@@ -67,12 +78,18 @@ export const HabitRepository = {
   },
 
   async complete(habit: Habit, date: number = Date.now()): Promise<Habit> {
+    // `habit_entries.date` is bucketed by local midnight so that `findTodaysEntry`
+    // can match it with an exact `Q.where('date', dayStart)`. Storing a raw
+    // timestamp here would never equal a midnight boundary, which would let the
+    // same habit be completed repeatedly on one day for unlimited streak and XP.
+    const entryDate = startOfLocalDay(date);
+
     return database.write(async () => {
       await habit.complete();
       await database.get<HabitEntry>('habit_entries').create((entry) => {
         entry.habitId = habit.id;
         entry.userId = habit.userId;
-        entry.date = date;
+        entry.date = entryDate;
         entry.completed = true;
         entry.notes = null;
       });
@@ -95,9 +112,7 @@ export const HabitRepository = {
   },
 
   async findTodaysEntry(habitId: string): Promise<HabitEntry | undefined> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dayStart = today.getTime();
+    const dayStart = startOfLocalDay();
     const entries = await database
       .get<HabitEntry>('habit_entries')
       .query(Q.where('habit_id', habitId), Q.where('date', dayStart))
