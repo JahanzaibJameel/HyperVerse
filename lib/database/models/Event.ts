@@ -23,7 +23,7 @@ export class Event extends Model {
   @readonly @date('created_at') createdAt!: number;
   @readonly @date('updated_at') updatedAt!: number;
 
-  @relation('events', 'user_id') user!: User;
+  @relation('users', 'user_id') user!: User;
 
   get isMeeting(): boolean {
     return this.type === 'meeting';
