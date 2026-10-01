@@ -20,7 +20,7 @@ export class AIMessage extends Model {
   @field('tokens_used') tokensUsed!: number | null;
   @readonly @date('created_at') createdAt!: number;
 
-  @relation('ai_messages', 'user_id') user!: User;
+  @relation('users', 'user_id') user!: User;
 
   get isUser(): boolean {
     return this.role === 'user';
