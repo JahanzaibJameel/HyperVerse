@@ -20,7 +20,7 @@ export class Achievement extends Model {
   @field('unlocked_at') unlockedAt!: number;
   @readonly @date('created_at') createdAt!: number;
 
-  @relation('achievements', 'user_id') user!: User;
+  @relation('users', 'user_id') user!: User;
 
   get isTask(): boolean {
     return this.category === 'task';
