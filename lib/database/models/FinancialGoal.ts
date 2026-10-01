@@ -21,7 +21,7 @@ export class FinancialGoal extends Model {
   @readonly @date('created_at') createdAt!: number;
   @readonly @date('updated_at') updatedAt!: number;
 
-  @relation('financial_goals', 'user_id') user!: User;
+  @relation('users', 'user_id') user!: User;
 
   get progress(): number {
     return this.targetAmount > 0 ? this.currentAmount / this.targetAmount : 0;
