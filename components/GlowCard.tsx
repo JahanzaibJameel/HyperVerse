@@ -36,47 +36,42 @@ export function GlowCard({ children, style, glowColor, intensity = "medium", onP
 
   const Card = onPress ? Pressable : View;
 
-  const Inner = (
-    <Card
-      onPress={onPress}
-      style={[
-        styles.card,
-        {
-          backgroundColor:
-            Platform.OS === "web" ? colors.card + "cc" : colors.card,
-          borderColor: glow + glowAlpha,
-          ...(boxShadow ? { boxShadow } as any : {}),
-          ...nativeShadow,
-        },
-        style,
-      ]}
-    >
-      {children}
+  const cardStyle = [
+    styles.card,
+    {
+      backgroundColor: Platform.OS === "web" ? colors.card + "cc" : colors.card,
+      borderColor: glow + glowAlpha,
+      ...(boxShadow ? { boxShadow } as any : {}),
+      ...nativeShadow,
+    },
+    style,
+  ];
+
+  // iOS keeps the blur treatment, but it has to stay inside the same `Card` tree.
+  // Returning a separate branch here would drop `onPress` entirely and apply
+  // `style` a second time, making every tappable card inert on iOS.
+  const content =
+    Platform.OS === "ios" ? (
+      <BlurView intensity={blurIntensity} tint="dark" style={styles.blurWrapper}>
+        {children}
+      </BlurView>
+    ) : (
+      children
+    );
+
+  return (
+    <Card onPress={onPress} style={cardStyle}>
+      {content}
     </Card>
   );
-
-  if (Platform.OS === "ios") {
-    return (
-      <View style={[styles.outerWrapper, style]}>
-        <BlurView intensity={blurIntensity} tint="dark" style={[styles.blurWrapper, { borderColor: glow + glowAlpha }]}>
-          {children}
-        </BlurView>
-      </View>
-    );
-  }
-
-  return Inner;
 }
 
 const styles = StyleSheet.create({
-  outerWrapper: {
-    borderRadius: 20,
-    overflow: "hidden",
-  },
+  // The card already supplies the radius, border, and padding; the blur layer
+  // only needs to clip its content to those bounds.
   blurWrapper: {
     borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
+    overflow: "hidden",
   },
   card: {
     borderRadius: 20,
