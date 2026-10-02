@@ -212,9 +212,13 @@ class AuthService {
         disableDeviceFallback: false,
       });
 
-      // `error` must be surfaced: it is the only signal that distinguishes a
-      // user dismissal from a genuine rejection.
-      return { success: result.success, error: result.error };
+            // `error` must be surfaced: it is the only signal that distinguishes a
+      // user dismissal from a genuine rejection. The success variant of the
+      // result type carries no `error` field, hence the narrowing.
+      return {
+        success: result.success,
+        error: result.success ? undefined : result.error,
+      };
     } catch (error) {
       return { 
         success: false, 

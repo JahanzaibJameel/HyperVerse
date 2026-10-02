@@ -185,22 +185,12 @@ export const useAuthStore = create<AuthStore>()(
        * object over `initialState`, so persisting it would restore
        * `isAuthenticated: true` on cold start and skip the unlock check.
        */
-      partialize: (state: any): PersistedAuthState => {
-        // TEMPORARY PROBE — remove before commit.
-        console.log('[PROBE] payload:', JSON.stringify({
-          hasAccount: state.hasAccount,
-          userId: state.user?.id ?? null,
-          deviceId: state.user?.deviceId ?? null,
-          lastAuthTimestamp: state.lastAuthTimestamp,
-          isAuthenticatedPresentInState: 'isAuthenticated' in (state as object),
-        }));
-        return {
-          hasAccount: state.hasAccount,
-          userId: state.user?.id ?? null,
-          deviceId: state.user?.deviceId ?? null,
-          lastAuthTimestamp: state.lastAuthTimestamp,
-        };
-      },
+      partialize: (state: any): PersistedAuthState => ({
+        hasAccount: state.hasAccount,
+        userId: state.user?.id ?? null,
+        deviceId: state.user?.deviceId ?? null,
+        lastAuthTimestamp: state.lastAuthTimestamp,
+      }),
     }
   )
 );

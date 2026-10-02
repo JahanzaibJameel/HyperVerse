@@ -4,7 +4,7 @@ import { Redirect } from 'expo-router';
 import { useAuthStore } from '@/lib/stores/authStore';
 
 export default function AuthLayout() {
-  const { user, isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
 
   // Only an *unlocked* session may enter the app. Gating on `user` alone would
   // let a hydrated profile bypass the lock screen.

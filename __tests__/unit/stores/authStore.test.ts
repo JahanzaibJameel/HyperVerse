@@ -1,8 +1,10 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { BACKGROUND_GRACE_MS, useAuthStore } from '@/lib/stores/authStore';
 import AuthService from '@/lib/services/AuthService';
 
 jest.mock('expo-secure-store', () => {
-  let store: Record<string, string> = {};
+  const store: Record<string, string> = {};
   return {
     getItemAsync: jest.fn((key: string) => Promise.resolve(store[key] ?? null)),
     setItemAsync: jest.fn((key: string, value: string) => {
@@ -39,8 +41,6 @@ jest.mock('@react-native-async-storage/async-storage', () => {
     },
   };
 });
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PERSIST_KEY = 'hyperverse-auth';
 

@@ -7,7 +7,7 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import AuthService from '@/lib/services/AuthService';
 
 jest.mock('expo-secure-store', () => {
-  let store: Record<string, string> = {};
+  const store: Record<string, string> = {};
   return {
     getItemAsync: jest.fn((key: string) => Promise.resolve(store[key] ?? null)),
     setItemAsync: jest.fn((key: string, value: string) => {
@@ -113,13 +113,14 @@ describe('root layout launch gate', () => {
       </RootLayoutNavGate>
     );
 
-    // The gate holds the router back, so the locked user has no path into the
-    // tabs and the store stays locked. The unlock attempt must also have run, or
-    // the test would pass for the wrong reason.
+    // `isLoading` only clears in the `finally` of the launch effect, so waiting
+    // on it means the unlock decision has settled. Asserting the locked state
+    // before that would pass even if the gate never ran.
     await waitFor(() => {
-      expect(authenticateForApp).toHaveBeenCalled();
+      expect(useAuthStore.getState().isLoading).toBe(false);
     });
 
+    expect(authenticateForApp).toHaveBeenCalledTimes(1);
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(screen.queryByTestId('tabs-shell')).toBeNull();
   });
@@ -189,8 +190,9 @@ describe('root layout launch gate', () => {
     // Even though authenticateForApp said "unlocked", a failed startup must not
     // silently proceed as a normal authenticated session.
     await waitFor(() => {
-      expect(useAuthStore.getState().isAuthenticated).toBe(false);
+      expect(useAuthStore.getState().isLoading).toBe(false);
     });
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(screen.queryByTestId('tabs-shell')).toBeNull();
   });
 
@@ -209,6 +211,7 @@ describe('root layout launch gate', () => {
 
     await waitFor(() => {
       expect(useAuthStore.getState().hasAccount).toBe(false);
+      expect(useAuthStore.getState().isLoading).toBe(false);
     });
 
     // No account means nothing to unlock; the user belongs on setup, not the
@@ -223,7 +226,11 @@ describe('root layout launch gate', () => {
       reason: 'biometric',
     });
 
-    render(<RootLayoutNavGate />);
+    render(
+      <RootLayoutNavGate>
+        <TabsShell testID="tabs-shell" />
+      </RootLayoutNavGate>
+    );
 
     await waitFor(() => {
       expect(authenticateForApp).toHaveBeenCalledTimes(1);

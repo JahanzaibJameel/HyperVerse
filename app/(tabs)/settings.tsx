@@ -130,6 +130,20 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Wiping every record is destructive and irreversible, so it is
+              // gated behind the same system check the app lock uses — even when
+              // the user has not enabled app lock.
+              const unlock = await AuthService.getInstance().authenticateForApp();
+              if (unlock.status !== 'unlocked') {
+                Alert.alert(
+                  'Authentication required',
+                  unlock.reason === 'unavailable'
+                    ? 'Set up a screen lock or biometric on this device to confirm.'
+                    : 'Confirm your identity to delete everything.',
+                );
+                return;
+              }
+
               await AuthService.getInstance().deleteProfile(user?.dbId);
               logout();
               router.replace('/(auth)/setup');

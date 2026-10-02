@@ -12,7 +12,7 @@ export default function SetupScreen() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { setUser, setLoading } = useAuthStore();
+  const { markUnlocked, setLoading } = useAuthStore();
   const { database: db, isReady } = useDatabase();
 
   const handleSetup = async () => {
@@ -48,7 +48,9 @@ export default function SetupScreen() {
         isActive: profile.isActive,
       });
 
-      setUser({ ...profile, dbId: user.id });
+      // Creating an account is itself the first successful authentication, so
+      // this is the one setup path that may unlock the session.
+      markUnlocked({ ...profile, dbId: user.id });
       router.replace('/(tabs)');
     } catch (error) {
       console.error('Setup failed:', error);

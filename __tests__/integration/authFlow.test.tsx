@@ -306,7 +306,10 @@ describe('Auth Flow Integration Tests', () => {
 
       const result = await authService.authenticateForApp();
 
-      expect(result).toBe(true);
+      // `authenticateForApp` now returns a discriminated result rather than a
+      // bare boolean, so a dismissal is distinguishable from a failure and can
+      // never be mistaken for success.
+      expect(result).toEqual({ status: 'unlocked', reason: 'biometric' });
       expect(authenticate).toHaveBeenCalledWith('Unlock HyperVerse');
     });
   });
