@@ -144,6 +144,9 @@ temp/
 # Vercel
 .vercel
 
+# Netlify
+.netlify
+
 # Git LFS - Large files (AI models, datasets)
 *.bin
 *.onnx
