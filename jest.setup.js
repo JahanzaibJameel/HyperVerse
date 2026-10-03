@@ -43,22 +43,23 @@ jest.mock('expo-secure-store', () => {
       return Promise.resolve();
     }),
 isAvailableAsync: jest.fn(() => Promise.resolve(true)),
-  // stubs — configure per test if the return value matters
-  getItem: jest.fn((key) => store[key] ?? null),
-  setItem: jest.fn((key, value) => {
-    store[key] = value;
-  }),
-  canUseBiometricAuthentication: jest.fn(() => false),
-  // Real values come from the native `ExpoSecureStore` module, so these are
-  // placeholders. This repo never passes `keychainAccessible`, so no behaviour
-  // depends on them.
-  WHEN_UNLOCKED: 1,
-  WHEN_UNLOCKED_THIS_DEVICE_ONLY: 2,
-  AFTER_FIRST_UNLOCK: 3,
-  AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 4,
-  ALWAYS: 5,
-  ALWAYS_THIS_DEVICE_ONLY: 6,
-  WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: 7,
+    // Sync accessors — stubs, configure per test if the return value matters.
+    getItem: jest.fn((key) => store[key] ?? null),
+    setItem: jest.fn((key, value) => {
+      store[key] = value;
+    }),
+    canUseBiometricAuthentication: jest.fn(() => false),
+    // Real values come from the native `ExpoSecureStore` module, so these are
+    // placeholders. This repo never passes `keychainAccessible`, so no behaviour
+    // depends on them.
+    WHEN_UNLOCKED: 1,
+    WHEN_UNLOCKED_THIS_DEVICE_ONLY: 2,
+    AFTER_FIRST_UNLOCK: 3,
+    AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 4,
+    ALWAYS: 5,
+    ALWAYS_THIS_DEVICE_ONLY: 6,
+    WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: 7,
+  };
 });
 
 // Mirrors the real `expo-local-authentication` surface at 17.0.9. `jest.mock`

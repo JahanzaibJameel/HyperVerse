@@ -113,14 +113,14 @@ describe('root layout launch gate', () => {
       </RootLayoutNavGate>
     );
 
-    // `isLoading` only clears in the `finally` of the launch effect, so waiting
-    // on it means the unlock decision has settled. Asserting the locked state
-    // before that would pass even if the gate never ran.
+    // Wait on the unlock attempt itself, not on `isLoading`. `isLoading` is
+    // already `false` in `initialState`, so waiting on it resolves on the first
+    // poll — before the launch effect has run — and the call-count assertion
+    // below then fails intermittently under load.
     await waitFor(() => {
+      expect(authenticateForApp).toHaveBeenCalledTimes(1);
       expect(useAuthStore.getState().isLoading).toBe(false);
     });
-
-    expect(authenticateForApp).toHaveBeenCalledTimes(1);
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(screen.queryByTestId('tabs-shell')).toBeNull();
   });
@@ -156,10 +156,14 @@ describe('root layout launch gate', () => {
       </RootLayoutNavGate>
     );
 
+    // A retry does not re-run the launch effect, so the router staying absent is
+    // asserted directly and then re-checked once the retry has unlocked. The
+    // first `waitFor` only needs to let the initial lock settle.
     await waitFor(() => {
-      expect(screen.queryByTestId('tabs-shell')).toBeNull();
+      expect(authenticateForApp).toHaveBeenCalledTimes(1);
     });
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(screen.queryByTestId('tabs-shell')).toBeNull();
 
     // Re-rendering after the user passes the check must let them in.
     render(
@@ -187,11 +191,16 @@ describe('root layout launch gate', () => {
       </RootLayoutNavGate>
     );
 
-    // Even though authenticateForApp said "unlocked", a failed startup must not
-    // silently proceed as a normal authenticated session.
+    // `loadUserProfile` rejects before `runUnlock` is reached, so this is the one
+    // scenario where `authenticateForApp` is never called. Wait on the profile
+    // read instead: it is false before the effect runs and true once the launch
+    // has started, which proves the wait is not resolving against `initialState`.
+    // Pairing it with `isLoading === false` then proves it also settled.
     await waitFor(() => {
+      expect(loadProfile).toHaveBeenCalled();
       expect(useAuthStore.getState().isLoading).toBe(false);
     });
+
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(screen.queryByTestId('tabs-shell')).toBeNull();
   });
@@ -209,7 +218,11 @@ describe('root layout launch gate', () => {
       </RootLayoutNavGate>
     );
 
+    // Wait on the profile read: `hasAccount` and `isLoading` are both already at
+    // their resting values in `initialState`, so neither alone proves the launch
+    // effect has run.
     await waitFor(() => {
+      expect(loadProfile).toHaveBeenCalled();
       expect(useAuthStore.getState().hasAccount).toBe(false);
       expect(useAuthStore.getState().isLoading).toBe(false);
     });
