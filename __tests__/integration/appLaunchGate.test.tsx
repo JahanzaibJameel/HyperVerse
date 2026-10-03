@@ -64,6 +64,15 @@ const profile = {
 const loadProfile = jest.spyOn(AuthService.getInstance(), 'loadUserProfile');
 const authenticateForApp = jest.spyOn(AuthService.getInstance(), 'authenticateForApp');
 
+beforeAll(() => {
+  // The first test in a file pays for one-time RTL and module-graph setup
+  // (~900ms here), which pushed it past its waitFor budget under parallel worker
+  // load. Rendering a throwaway tree first moves that cost off the tests'
+  // budget. The tree is unmounted immediately so auto-cleanup has nothing to do.
+  const warmup = render(<View testID="warmup" />);
+  warmup.unmount();
+});
+
 beforeEach(() => {
   useAuthStore.setState({
     isAuthenticated: false,
