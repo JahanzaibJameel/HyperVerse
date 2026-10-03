@@ -234,6 +234,31 @@ explicitly not part of the dependency alignment.
 > than optional cleanup. See "Dependency advisory triage". The original text is
 > left in place above so the correction is visible against what it replaces.
 
+> **CORRECTION 2 (2026-10-03) — the correction above is itself wrong. Bundle
+> measurement supersedes it.** Measured with `npx expo export --platform ios
+> --dump-sourcemap` and reading the export sourcemap's `sources` array:
+> `@xenova/transformers` **is** bundled — 16 source modules
+> (`transformers.js`, `pipelines.js`, `backends/onnx.js`, `utils/image.js` and
+> others), alongside `onnxruntime-web`, `onnxruntime-common` and
+> `@huggingface/jinja`. **But `protobufjs`, `onnx-proto` and `sharp` are all
+> absent from both the iOS and Android bundles.** `@xenova/transformers` resolves
+> those lazily at inference time rather than through static imports, so Metro
+> never pulls them in.
+>
+> So of the 8 advisories attributed to that dependency — including the tree's
+> only critical, `GHSA-xq3m-2v4x-88gg` — **0 of 8 are in the shipped bundle.**
+> The earlier claim that they are "shipped-but-dormant" overstated it: the
+> wrapper ships, the vulnerable parsers and decoders do not.
+>
+> The first correction was right about one thing and that still stands:
+> `lib/ai/` *is* reachable from `app/(tabs)/ai.tsx` and is bundled. It is the
+> severity of the consequence that was wrong, not the reachability. The finding
+> remains worth acting on — the dependency is unused, large, and its vulnerable
+> code arrives the moment anyone calls `ModelManager.initialize()` — but it is a
+> supply-chain and bundle-size problem, not a live exposure today. `nanoid` is
+> the only measured live exposure in the gated set. Full measurements, including
+> the method's limits, are under "Bundle reachability (measured)".
+
 Also unresolved in that module, for whenever it is revived: `ModelManager`
 downloads a relative path (`expo-file-system` requires absolute), fetches
 `model_quantized.onnx` without `config.json`/`tokenizer.json` while
@@ -494,3 +519,152 @@ despite the severity labels.
 - **Separately: `nanoid`'s importer.** If it comes from `@xenova/transformers`,
   removing that dependency clears these 3 GHSAs as a side effect, which would
   make the audit triage and the dead-module question the same piece of work.
+#### Extended to Android and web (2026-10-03, same commit as the table above)
+
+`npx expo export --platform <p> --no-bytecode --dump-sourcemap` for each target,
+analysed identically via the `sources` array.
+
+| Package | iOS | Android | Web | Size (source bytes) | Evidence |
+|---|:--:|:--:|:--:|---:|---|
+| `protobufjs` | no | no | **n/a** | — | absent 2/2 measured platforms |
+| `sharp` | no | no | **n/a** | — | absent 2/2; native addon + JS shim both unshipped |
+| `shell-quote` | no | no | **n/a** | — | absent 2/2 |
+| `tar` | no | no | **n/a** | — | absent 2/2 |
+| `undici` | no | no | **n/a** | — | absent 2/2 |
+| `js-yaml` | no | no | **n/a** | — | absent 2/2 |
+| `image-size` | no | no | **n/a** | — | absent 2/2 |
+| `brace-expansion` | no | no | **n/a** | — | absent 2/2; 0 of 5 GHSAs bundled |
+| `braces` | no | no | **n/a** | — | absent 2/2 |
+| `node-forge` | no | no | **n/a** | — | absent 2/2 |
+| `http-cache-semantics` | no | no | **n/a** | — | absent 2/2 |
+| `ws` | no | no | **n/a** | — | absent 2/2 |
+| `@xmldom/xmldom` | no | no | **n/a** | — | absent 2/2; 0 of 8 GHSAs bundled |
+| `browserslist` | no | no | **n/a** | — | absent 2/2 |
+| `postcss` | no | no | **n/a** | — | absent 2/2 |
+| **`nanoid`** | **YES** | **YES** | **n/a** | **497 B**, 1 module | `nanoid/non-secure/index.js` in both |
+| `@xenova/transformers` | 16 mod | 16 mod | **n/a** | — | shim ships; `protobufjs`/`onnx-proto`/`sharp` absent |
+| `onnxruntime-web` | 1 mod | 1 mod | **n/a** | — | present in both |
+
+**No module differs between iOS and Android.** All 16 agree, as do the
+`@xenova`/`onnxruntime` counts. Bundle sizes are near-identical (iOS 5.63 MB /
+2454 sources, Android 5.63 MB / 2450 sources; 105 distinct packages on both).
+
+**Web could not be measured — the export fails to build.** Not a tooling
+problem:
+
+```
+Error: Unable to resolve module better-sqlite3 from
+node_modules/.pnpm/@nozbe+watermelondb@0.27.1/node_modules/@nozbe/watermelondb/
+adapters/sqlite/sqlite-node/Database.js
+```
+
+WatermelonDB's `sqlite-node` adapter requires `better-sqlite3`, which is not a
+dependency of this project. So **`npm run build` / web export is currently
+broken**, independently of any security question. This is a real finding and is
+recorded as one; it also means the web platform has **no** bundle-reachability
+evidence, and "not in bundle" is therefore established for iOS and Android only.
+
+**Per-platform sanity check.** Both native platforms resolve the probe packages
+with substantial counts, so absence is meaningful on both:
+
+| Package | iOS | Android |
+|---|---:|---:|
+| `react-native` | 421 | 419 |
+| `@react-navigation/*` | 170 | 170 |
+| `expo-router` | 116 | 114 |
+| `@nozbe/watermelondb` | 101 | 101 |
+| `expo` | 34 | 34 |
+
+(`@react-navigation/*` counts sub-packages — `native`, `core`, `routers`,
+`bottom-tabs`, `elements`, `native-stack`. An earlier single-name probe reported
+0 for `@react-navigation`; that was a probe artifact, not a real absence.)
+
+#### `nanoid` — the trace changes the recommended fix
+
+`pnpm why nanoid` shows two production paths and one dev path. The path that
+actually reaches the bundle is:
+
+```
+expo (dependencies)
+└─ expo-router
+   └─ @react-navigation/core | native | routers
+      └─ nanoid 3.3.11
+```
+
+A second, shorter production path runs `expo → @expo/cli → @expo/metro-config →
+postcss → nanoid`, but that one is build tooling and is absent from both
+bundles, consistent with `postcss` being absent. Dev-only entries
+(`@expo/cli`, `jest-expo`, `@storybook/addon-ondevice-controls`) are irrelevant
+to reachability.
+
+**But the importers ask for `nanoid/non-secure` explicitly**, at 9 call sites:
+
+```
+@react-navigation/core/lib/module/PreventRemoveProvider.js   from 'nanoid/non-secure'
+@react-navigation/core/lib/module/usePreventRemove.js        from 'nanoid/non-secure'
+@react-navigation/core/lib/module/useRegisterNavigator.js    from 'nanoid/non-secure'
+@react-navigation/native/lib/module/createMemoryHistory.js   from 'nanoid/non-secure'
+@react-navigation/routers/lib/module/BaseRouter.js          from 'nanoid/non-secure'
+@react-navigation/routers/lib/module/createRouteFromAction.js
+@react-navigation/routers/lib/module/DrawerRouter.js
+@react-navigation/routers/lib/module/StackRouter.js
+@react-navigation/routers/lib/module/TabRouter.js
+```
+
+That is a deep import of the `Math.random()`-backed generator, chosen upstream —
+not a resolution accident Metro introduced. `nanoid`'s own `package.json` maps
+`exports["."]["react-native"]` to `./index.browser.js`, so the bundled
+`non-secure/index.js` came from these explicit specifiers.
+
+**Consequence: a `pnpm.overrides` bump to `>=3.3.18` may not actually fix this.**
+It satisfies the advisory scanner, because the scanner only compares versions,
+but whether 3.3.18's `/non-secure` entry stops using `Math.random()` was **not
+verified** and must be before relying on it. Do not record this as fixed on the
+strength of a version number alone.
+
+The override that would be added, if the decision is to force the upgrade:
+
+```json
+{
+  "pnpm": {
+    "overrides": {
+      "nanoid@<3.3.18": "3.3.18"
+    }
+  }
+}
+```
+
+Scoped to `<3.3.18` so a future major is not silently downgraded. Not applied.
+
+**And the more important question is whether this needs fixing at all.**
+`@react-navigation` uses `nanoid/non-secure` to generate *route keys and
+navigation-state IDs* — not security tokens, not session material, not anything
+an attacker benefits from predicting. For that use, a `Math.random()` ID is a
+predictability weakness in the general sense and not a vulnerability in this
+app's threat model: there is no privilege boundary keyed on a route key. The
+defensible call is likely **accept with reasoning** rather than fix, and that
+is a judgement for a human, not something to settle by bumping a version.
+
+#### Next decision (supersedes the one above)
+
+1. **`nanoid` (3 GHSAs, in bundle, both native platforms) — decide accept or
+   fix, and do not let a version bump stand in for the decision.** Fix requires
+   either an override *plus* verification that 3.3.18's `/non-secure` is not
+   `Math.random()`, or an upstream `@react-navigation` change. Accept requires
+   recording that the affected IDs are navigation keys, not secrets. Either way
+   the entry belongs in `auditConfig.ignoreGhsas` or in a documented fix, not in
+   silence.
+2. **41 absent GHSAs across 15 modules — not yet eligible for the ignore list.**
+   The evidence covers iOS and Android only. Web cannot be produced until
+   `better-sqlite3` is resolved, so "absent on every platform that can currently
+   be built" is the strongest claim available, and that is weaker than "absent
+   everywhere".
+3. **Fix the web export first** (`better-sqlite3` missing, or exclude
+   `sqlite-node` from the web build). It is a broken build independent of
+   security, and it is the only thing standing between the current evidence and
+   three-platform coverage.
+4. **The `@xenova/transformers` decision is now decoupled from security.** With
+   0 of 8 its advisories in the bundle, removing it is justified on bundle size
+   and dead-code grounds alone — the security urgency in earlier notes was wrong.
+5. **Do not remove `continue-on-error` yet.** It should come off only once an
+   ignore list exists and the gated set is either empty or fully justified.
