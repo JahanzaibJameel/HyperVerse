@@ -44,6 +44,10 @@ jobs:
         run: pnpm test:coverage
 
   audit:
+    # Display name only — the job id stays `audit` so any branch-protection entry
+    # or `needs:` reference keyed on the id keeps resolving. The rename is what
+    # stops a green tick from reading as "audit passed".
+    name: audit (advisory)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -62,6 +66,33 @@ jobs:
 
       # Advisory only: a high-severity advisory should not be able to block an
       # unrelated fix, but it must be visible on every run.
+      #
+      # `continue-on-error: true` is load-bearing and stays until the advisories
+      # are triaged. Without it this job cannot fail the pipeline, so a green tick
+      # on this job means only that the job ran — which is why the job is named
+      # `audit (advisory)` rather than `audit`, and why the summary step below
+      # restates the outcome as an explicit annotation. Triage is tracked in
+      # docs/followups.md; once each advisory is fixed or formally accepted, this
+      # flag comes off and the job gates for real.
       - name: Audit dependencies
+        id: audit
         run: pnpm audit --audit-level=high
         continue-on-error: true
+
+      # Reads the audit step's real outcome and restates it, so the run page says
+      # in words that advisories were found rather than leaving a bare exit-code
+      # error next to a green job.
+      #
+      # With `continue-on-error: true`, `outcome` keeps the original failure while
+      # `conclusion` is rewritten to success — this step deliberately reads
+      # `outcome`, since `conclusion` would always report success here.
+      - name: Summarise advisory findings
+        if: always()
+        env:
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+        run: |
+          if [ "$AUDIT_OUTCOME" = "failure" ]; then
+            echo "::warning title=Dependency audit found advisories::pnpm audit --audit-level=high exited non-zero. Advisory job: this does not fail the pipeline. The advisory list is in the 'Audit dependencies' step log; triage is tracked in docs/followups.md."
+          else
+            echo "::notice title=Dependency audit clean::pnpm audit --audit-level=high reported no high or critical advisories."
+          fi

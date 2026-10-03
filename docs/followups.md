@@ -27,6 +27,44 @@ TS/TSX, so the version bump was risk-free precisely because nothing uses them:
 Separate cleanup commit: confirm no build-time plugin requirement before
 removing any of them.
 
+**Audit job is `continue-on-error`.** `.github/workflows/test.yml` runs
+`pnpm audit --audit-level=high` with `continue-on-error: true`. The job has never
+been able to fail the pipeline, so a green tick on it meant only that the job
+ran — it was read as "audit passed" when in fact the audit had been exiting 1.
+Renamed to `audit (advisory)` so the tick is honest, and a summary step now
+restates the outcome as a `::warning::` annotation on every run.
+
+Measured 2026-10-03 on `pnpm-lock.yaml` (pnpm 9.15.0), reproducing CI exactly:
+
+```
+96 vulnerabilities found
+Severity: 4 low | 33 moderate | 56 high | 3 critical
+```
+
+All three criticals are transitive and none is reachable from app code, but that
+is a judgement that still has to be made per advisory rather than assumed:
+
+| Advisory | Package | Vulnerable | Patched | Reached via |
+| --- | --- | --- | --- | --- |
+| GHSA-xq3m-2v4x-88gg | `protobufjs` | `<7.5.5` | `>=7.5.5` | `@xenova/transformers` → `onnxruntime-web` → `onnx-proto` |
+| GHSA-w7jw-789q-3m8p | `shell-quote` | `>=1.1.0 <=1.8.3` | `>=1.8.4` | `react-devtools-core` (1408 paths) |
+| GHSA-vfj7-8cjw-p6xm | `tar` | `<=7.5.18` | `>=7.5.19` | `@expo/cli` |
+
+Representative highs: `sharp` `<0.35.4` (via `@xenova/transformers`),
+`undici` `<6.28.1` and `js-yaml` (both via `@expo/cli`), `image-size` `<=2.0.2`
+(via `metro`), `node-forge` `<=1.4.0` (via `@expo/code-signing-certificates`,
+**no patched version exists**), `http-cache-semantics` (via `@expo/ngrok`, no
+patched version), and `brace-expansion` / `braces` stack-exhaustion advisories
+reaching 17k–22k paths through `glob`/`minimatch`.
+
+Note the two advisories with no available patch: those cannot be "fixed" by a
+version bump and force an accept-or-remove decision.
+
+To close: for each advisory choose fix (bump, possibly a major), upgrade
+(replace the package), or accept (document the reasoning in an allowlist here).
+Only then remove `continue-on-error` and let the job gate on whatever remains.
+Doing it in the other order converts one dishonest green into a dishonest red.
+
 **`pnpm-workspace.yaml` breaks `expo install`.** The file declares
 `packages: ['.']`, which makes pnpm treat the repo root as a workspace and reject
 a bare `pnpm add` with `ERR_PNPM_ADDING_TO_ROOT`. `expo install` shells out to
@@ -40,6 +78,22 @@ npm_config_ignore_workspace_root_check=true npx expo install --fix
 Options for a separate commit: remove `pnpm-workspace.yaml` entirely (this repo
 is not a monorepo — there is no `packages/` directory), or set
 `ignore-workspace-root-check=true` in a committed `.npmrc`.
+
+## CI / GitHub
+
+**Branch protection — audit job display name changed.**
+`.github/workflows/test.yml` renamed the audit job's display name to
+`audit (advisory)`. The job id is unchanged. If branch protection requires
+`Test Suite / audit` as a status check, that string will need updating to
+`Test Suite / audit (advisory)`. Verify under Settings → Branches → Require
+status checks.
+
+Unverified as of 2026-10-03: branch protection requires authentication, so it
+could not be read from the repo. If the check was left pointing at the old
+string, every push will report the required check as missing and block merges
+rather than failing loudly — which would look like a broken pipeline rather than
+a stale setting. Cheap to confirm, so confirm it before relying on a green
+sidebar again.
 
 ## Test infrastructure
 
