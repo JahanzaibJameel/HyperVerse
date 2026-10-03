@@ -1,4 +1,17 @@
-name: Build and Deploy
+# This workflow does not deploy. It exports the web bundle when EXPO_TOKEN is
+# set; otherwise it is a no-op that only reports that the token is absent.
+#
+# It was previously named "Build and Deploy" while proving neither: the export
+# step was skipped silently whenever the secret was missing, so a green run said
+# nothing about whether a build ever happened. The name now matches the job.
+#
+# Two further caveats, deliberately left in place rather than hidden:
+#   - `expo export:web` was removed after Expo SDK 45. The command is kept behind
+#     the token gate only, and must become `npx expo export --platform web`
+#     before the token is ever configured.
+#   - `npm run build` (scripts/build.js) and `npm run serve` are not exercised
+#     here at all, so the static-build output is unverified by CI.
+name: Web Export (advisory)
 
 on:
   push:
@@ -7,7 +20,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  export-web:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -27,13 +40,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Expo (web)
+      - name: Export web bundle (requires EXPO_TOKEN)
         run: |
           if [ -n "$EXPO_TOKEN" ]; then
             pnpm expo export:web
           else
-            echo "EXPO_TOKEN not set — skipping deployment build"
-            echo "To enable builds, add your Expo token to repository secrets."
+            echo "::notice title=Web export skipped::EXPO_TOKEN is not configured, so no web bundle was exported and nothing was deployed. This job is advisory."
+            echo "EXPO_TOKEN not set - skipping web export"
+            echo "To enable exports, add your Expo token to repository secrets."
           fi
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

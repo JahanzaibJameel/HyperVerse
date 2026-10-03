@@ -14,11 +14,21 @@ export interface AIMessageInput {
 }
 
 /**
- * Chat order is `created_at` ascending, with `id` as a tiebreaker. A user message
- * and its reply can land in the same millisecond, and `created_at` is the only
- * column carrying order — without a secondary key the sort would be
- * non-deterministic for those pairs. These must be spread as separate query
- * arguments; WatermelonDB rejects a nested array as a query clause.
+ * Sort clauses for chat reads. These must be spread as separate query arguments;
+ * WatermelonDB rejects a nested array as a query clause, so the helper returns an
+ * array purely to be spread at the call site.
+ *
+ * The `created_at` clause carries insertion order. The `id` clause is here for
+ * API shape — a deterministic secondary sort key — and must not be mistaken for
+ * an ordering guarantee. WatermelonDB ids are random strings, not monotonic
+ * counters, so for two messages sharing a `created_at` (a user message and its
+ * reply can easily land in the same millisecond) the rows come back in an order
+ * derived from those random strings. That is stable within a single result set
+ * but not meaningful: it varies by machine and by run.
+ *
+ * Consequence for callers: do not rely on this function for strict insertion
+ * order when timestamps can collide. Either ensure distinct `created_at` values
+ * at write time, or sort on a monotonic column.
  */
 const orderByCreatedThenId = () => [Q.sortBy('created_at', 'asc'), Q.sortBy('id', 'asc')];
 

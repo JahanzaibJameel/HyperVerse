@@ -204,10 +204,35 @@ describe('Repository layer', () => {
 
   describe('AIRepository', () => {
     it('persists and reads chat messages in order', async () => {
-      await AIRepository.createMany([
-        { userId: user.id, sessionId: 's1', role: 'user', content: 'first' },
-        { userId: user.id, sessionId: 's1', role: 'assistant', content: 'second' },
-      ]);
+      // `created_at` is the only column carrying insertion order; the `id`
+      // secondary sort is over WatermelonDB's random ids and so cannot break a
+      // tie meaningfully. Creating both messages inside one tick made the
+      // assertion depend on how two random strings happened to sort — it passed
+      // on Windows and failed on Linux CI. Pinning the clock to distinct values
+      // removes the tie, so the test now exercises the ordering the repository
+      // actually guarantees.
+      jest.useFakeTimers();
+      try {
+        jest.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+
+        await AIRepository.create({
+          userId: user.id,
+          sessionId: 's1',
+          role: 'user',
+          content: 'first',
+        });
+
+        jest.advanceTimersByTime(10);
+
+        await AIRepository.create({
+          userId: user.id,
+          sessionId: 's1',
+          role: 'assistant',
+          content: 'second',
+        });
+      } finally {
+        jest.useRealTimers();
+      }
 
       const messages = await AIRepository.findBySession(user.id, 's1');
       expect(messages).toHaveLength(2);

@@ -18,6 +18,21 @@ const config = {
     'hooks/**/*.{js,jsx,ts,tsx}',
     'services/**/*.{js,jsx,ts,tsx}',
   ],
+  // Floors, not targets. Measured 2026-10-03 at 39.67 / 35.69 / 34.01 / 39.79
+  // (stmts / branch / funcs / lines); each threshold sits ~1.5-2pp below that so
+  // ordinary churn cannot flip the build. They exist to catch a real drop — a
+  // deleted test suite, an untested module added wholesale — and they are not a
+  // claim that this app is well covered. It is not: `app/` is still outside the
+  // globs above, so no screen code is measured at all. Widening the globs needs
+  // a fresh baseline and is tracked in docs/followups.md.
+  coverageThreshold: {
+    global: {
+      statements: 38,
+      branches: 34,
+      functions: 33,
+      lines: 38,
+    },
+  },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
