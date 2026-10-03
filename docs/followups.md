@@ -668,3 +668,113 @@ is a judgement for a human, not something to settle by bumping a version.
    and dead-code grounds alone — the security urgency in earlier notes was wrong.
 5. **Do not remove `continue-on-error` yet.** It should come off only once an
    ignore list exists and the gated set is either empty or fully justified.
+#### Web measured — three-platform table now complete (after the adapter fix)
+
+The web export previously failed with `Unable to resolve module better-sqlite3`
+from `@nozbe/watermelondb/adapters/sqlite/sqlite-node/Database.js`. Root cause:
+`adapters/sqlite` has **no web implementation**. Its `makeDispatcher/index.js`
+— the non-native variant Metro selects for web — unconditionally requires
+`../sqlite-node/DatabaseBridge` at line 8, which requires `better-sqlite3`. Only
+`makeDispatcher/index.native.js` avoids it. `metro.config.js` configured no
+`resolver.platforms` or platform alias, so the fix belonged in source, not in
+the resolver. The adapter is now selected at module level (`adapter.ts` /
+`adapter.web.ts`); see the commit for why a `Platform.OS` ternary inside one
+file would not have worked.
+
+`sqlite-node` / `better-sqlite3` matches in the web bundle: **0**.
+`@nozbe/lokijs` is bundled instead (3 modules).
+
+| Package | iOS | Android | Web | Size (source bytes) | Evidence |
+|---|:--:|:--:|:--:|---:|---|
+| `protobufjs` | no | no | no | — | absent 3/3; 0 of 6 GHSAs bundled |
+| `sharp` | no | no | no | — | absent 3/3; native addon + JS shim both unshipped |
+| `shell-quote` | no | no | no | — | absent 3/3 |
+| `tar` | no | no | no | — | absent 3/3 |
+| `undici` | no | no | no | — | absent 3/3 |
+| `js-yaml` | no | no | no | — | absent 3/3 |
+| `image-size` | no | no | no | — | absent 3/3 |
+| `brace-expansion` | no | no | no | — | absent 3/3; 0 of 5 GHSAs bundled |
+| `braces` | no | no | no | — | absent 3/3 |
+| `browserslist` | no | no | no | — | absent 3/3 |
+| `node-forge` | no | no | no | — | absent 3/3 |
+| `http-cache-semantics` | no | no | no | — | absent 3/3 |
+| `ws` | no | no | no | — | absent 3/3; 0 of 1 GHSAs bundled |
+| `@xmldom/xmldom` | no | no | no | — | absent 3/3; 0 of 8 GHSAs bundled |
+| `postcss` | no | no | no | — | absent 3/3 |
+| **`nanoid`** | **YES** | **YES** | **YES** | **497 B**, 1 module | `nanoid/non-secure/index.js` on all three |
+
+**No module differs across iOS, Android and web.** The three-platform evidence
+is complete. Bundle sizes: iOS 5.63 MB / 2448 modules, Android 5.63 MB / 2444,
+web 4.59 MB / 2131.
+
+**Sanity check per platform.** All probes resolve except one, and that one is
+correct behaviour rather than a measurement failure:
+
+| Package | iOS | Android | Web |
+|---|---:|---:|---:|
+| `expo-router` | 116 | 114 | 117 |
+| `@nozbe/watermelondb` | 101 | 101 | 104 |
+| `expo` | 34 | 34 | 29 |
+| `@react-navigation/*` | 170 | 170 | 163 |
+| `react-native` | 421 | 419 | **0** — expected |
+| `react-native-web` | n/a | n/a | 193 |
+
+Web reports 0 for bare `react-native` because Expo web resolves it to
+`react-native-web` (193 modules present). That is the platform working as
+designed, and it is the one probe that legitimately differs.
+
+### Advisory disposition: nanoid
+
+**Status: ACCEPTED with reasoning (not fixed).**
+
+**Trace.** `nanoid@3.3.11` arrives via `expo -> expo-router ->
+@react-navigation/*` (`PreventRemoveProvider`, `usePreventRemove`,
+`useRegisterNavigator`, `createMemoryHistory`, `BaseRouter`,
+`createRouteFromAction`, `DrawerRouter`, `StackRouter`, `TabRouter`). All 9
+call sites import `'nanoid/non-secure'` explicitly — an upstream choice, not a
+Metro resolution artifact. A second production path
+(`expo -> @expo/cli -> @expo/metro-config -> postcss -> nanoid`) is build
+tooling and is absent from all three bundles.
+
+**Applicable GHSAs.** `GHSA-28wg-ghj8-5hjv`, `GHSA-2v37-7h3g-55p8`,
+`GHSA-xwg4-73v4-xw9w`.
+
+**Why not fixed.** A `pnpm.overrides` entry pinning `nanoid@<3.3.18` to
+`3.3.18` would satisfy a version scanner but would not change which generator
+the caller uses — `@react-navigation` imports the `/non-secure` path by design.
+Whether 3.3.18's `/non-secure` stops using `Math.random()` is unverified
+upstream and not this repo's call. Recording a version bump as a fix would
+claim remediation that was never demonstrated.
+
+**Why accepted.** The values generated are route keys and navigation-state IDs
+— not tokens, not session material, not anything gated on unpredictability.
+There is no privilege boundary in this app keyed on a route key, so the
+vulnerability class (predictable ID generation) does not apply to this use. The
+presence of `nanoid/non-secure/index.js` in all three bundles is confirmed, and
+accepted here deliberately rather than overlooked.
+
+**Revisit when.** `@react-navigation` drops `nanoid`, or the audit tooling
+starts flagging the `/non-secure` deep import by path rather than by version —
+which would make this visible without a bundle re-measurement.
+
+**No `ignoreGhsas` entry is added in this commit.** This section records the
+decision; the ignore itself is deferred so that all accepted advisories land in
+one reviewable change, with the three-platform measurement to back them.
+
+#### Next decision
+
+1. **The ignore list is now unblocked.** Evidence covers all three platforms for
+   all 16 modules, with per-platform sanity checks recorded. 41 GHSAs across 15
+   modules are eligible for `auditConfig.ignoreGhsas`, each citing this section.
+   The three `nanoid` GHSAs are accepted on the reasoning above. That is 44 —
+   the entire gated set — which would let `--audit-level=high` exit 0 and
+   `continue-on-error` finally come off.
+2. **Before writing it, confirm the web build actually runs, not just bundles.**
+   `npx expo export --platform web` now completes, but no one has opened the
+   output. LokiJS on IndexedDB with `useIncrementalIndexedDB: true` and the v1
+   -> v2 `DROP COLUMN` migration is untested at runtime.
+3. **Re-run this measurement whenever these advisories are re-triaged.** An
+   `ignoreGhsas` entry is a standing claim that the package has not become
+   reachable, and only a bundle re-measurement can catch that.
+4. **`@xenova/transformers` removal is now a size/dead-code decision**, not a
+   security one — 0 of its 8 GHSAs are bundled on any platform.

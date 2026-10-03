@@ -1,8 +1,7 @@
 import { Database, Q } from '@nozbe/watermelondb';
 import type { Collection } from '@nozbe/watermelondb';
-import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 
-import { schema, migrations } from './schema';
+import adapter from './adapter';
 import {
   User,
   Task,
@@ -17,15 +16,6 @@ import {
   Achievement,
   Setting,
 } from './models';
-
-// Database configuration
-const adapter = new SQLiteAdapter({
-  dbName: 'HyperVerse',
-  schema,
-  migrations,
-  // Run the database in synchronous mode for better performance
-  jsi: true,
-});
 
 // Create database instance
 export const database = new Database({
