@@ -1,4 +1,6 @@
-import * as FileSystem from 'expo-file-system';
+// expo-file-system 19 made the modern Directory/File API the default export and
+// moved the imperative API this file uses to `expo-file-system/legacy`.
+import * as FileSystem from 'expo-file-system/legacy';
 
 import ModelManager from '../models/ModelManager';
 
