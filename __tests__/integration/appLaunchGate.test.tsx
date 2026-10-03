@@ -101,6 +101,41 @@ function TabsShell({ testID }: { testID: string }) {
   );
 }
 
+/** Stand-in for `app/(auth)/setup.tsx`. */
+function SetupShell() {
+  return (
+    <View testID="setup-shell">
+      <Text>setup</Text>
+    </View>
+  );
+}
+
+/**
+ * Stand-in for the router the gate actually guards.
+ *
+ * `RootLayoutNavGate`'s children are the *whole* navigator: `app/(auth)` sits in
+ * the same `<Stack>` as `app/(tabs)` (`app/_layout.tsx:31-33`), so the gate is
+ * handed both route groups and can only decide whether the router mounts — not
+ * which group shows. Holding `(tabs)` back on a first run is the job of the
+ * `Redirect` in `app/(tabs)/_layout.tsx:20-22`, which sends any session that is
+ * not unlocked to `(auth)/setup`.
+ *
+ * Modelling that redirect's outcome keeps these assertions about
+ * *reachability* — "can the user reach setup?" — instead of about the
+ * implementation detail that the gate returned `null`. The previous version
+ * asserted only that children were absent, which is exactly why a blank screen
+ * on first launch passed CI.
+ */
+function RouterStandIn({ tabsTestID }: { tabsTestID: string }) {
+  const { isAuthenticated, user } = useAuthStore();
+
+  if (!isAuthenticated && !user) {
+    return <SetupShell />;
+  }
+
+  return <TabsShell testID={tabsTestID} />;
+}
+
 /**
  * Launch-path regression test.
  *
@@ -118,7 +153,7 @@ describe('root layout launch gate', () => {
 
     render(
       <RootLayoutNavGate>
-        <TabsShell testID="tabs-shell" />
+        <RouterStandIn tabsTestID="tabs-shell" />
       </RootLayoutNavGate>
     );
 
@@ -131,7 +166,10 @@ describe('root layout launch gate', () => {
       expect(useAuthStore.getState().isLoading).toBe(false);
     });
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    // Neither route group may mount: a verified session is a precondition for
+    // the router, so a leak here has to fail the test rather than render setup.
     expect(screen.queryByTestId('tabs-shell')).toBeNull();
+    expect(screen.queryByTestId('setup-shell')).toBeNull();
   });
 
   it('renders the router and marks the session unlocked when unlock succeeds', async () => {
@@ -142,7 +180,7 @@ describe('root layout launch gate', () => {
 
     render(
       <RootLayoutNavGate>
-        <TabsShell testID="tabs-shell" />
+        <RouterStandIn tabsTestID="tabs-shell" />
       </RootLayoutNavGate>
     );
 
@@ -151,6 +189,7 @@ describe('root layout launch gate', () => {
     });
 
     expect(screen.getByTestId('tabs-shell')).toBeTruthy();
+    expect(screen.queryByTestId('setup-shell')).toBeNull();
     expect(useAuthStore.getState().user).not.toBeNull();
   });
 
@@ -161,7 +200,7 @@ describe('root layout launch gate', () => {
 
     render(
       <RootLayoutNavGate>
-        <TabsShell testID="tabs-shell" />
+        <RouterStandIn tabsTestID="tabs-shell" />
       </RootLayoutNavGate>
     );
 
@@ -173,11 +212,12 @@ describe('root layout launch gate', () => {
     });
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(screen.queryByTestId('tabs-shell')).toBeNull();
+    expect(screen.queryByTestId('setup-shell')).toBeNull();
 
     // Re-rendering after the user passes the check must let them in.
     render(
       <RootLayoutNavGate>
-        <TabsShell testID="tabs-shell-2" />
+        <RouterStandIn tabsTestID="tabs-shell-2" />
       </RootLayoutNavGate>
     );
 
@@ -196,7 +236,7 @@ describe('root layout launch gate', () => {
 
     render(
       <RootLayoutNavGate>
-        <TabsShell testID="tabs-shell" />
+        <RouterStandIn tabsTestID="tabs-shell" />
       </RootLayoutNavGate>
     );
 
@@ -212,6 +252,10 @@ describe('root layout launch gate', () => {
 
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(screen.queryByTestId('tabs-shell')).toBeNull();
+    // No profile was loaded, so the store has no user and the stand-in would
+    // render setup if the router mounted. Asserting its absence is what keeps
+    // this a fail-closed test rather than a first-run test.
+    expect(screen.queryByTestId('setup-shell')).toBeNull();
   });
 
   it('routes a first run to setup instead of the lock screen', async () => {
@@ -223,7 +267,7 @@ describe('root layout launch gate', () => {
 
     render(
       <RootLayoutNavGate>
-        <TabsShell testID="tabs-shell" />
+        <RouterStandIn tabsTestID="tabs-shell" />
       </RootLayoutNavGate>
     );
 
@@ -238,8 +282,21 @@ describe('root layout launch gate', () => {
 
     // No account means nothing to unlock; the user belongs on setup, not the
     // lock screen, and certainly not the tabs.
+    //
+    // This is the assertion the previous version of this test was missing. It
+    // only checked that the tabs group was absent, which a gate returning `null`
+    // for *every* phase satisfied — including the phase that left a fresh
+    // install staring at a blank screen with no way to create a profile.
+    // Reachability of setup is the actual requirement; absence of tabs is not
+    // sufficient evidence for it.
+    expect(screen.getByTestId('setup-shell')).toBeTruthy();
     expect(screen.queryByTestId('tabs-shell')).toBeNull();
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
+
+    // `useAppUnlock` returns before `runUnlock()` when there is no profile, so a
+    // first run must never reach the biometric check — there is nothing to
+    // verify yet, and prompting for it would be both wrong and unauthenticated.
+    expect(authenticateForApp).not.toHaveBeenCalled();
   });
 
   it('always runs authenticateForApp on cold start', async () => {
@@ -250,7 +307,7 @@ describe('root layout launch gate', () => {
 
     render(
       <RootLayoutNavGate>
-        <TabsShell testID="tabs-shell" />
+        <RouterStandIn tabsTestID="tabs-shell" />
       </RootLayoutNavGate>
     );
 

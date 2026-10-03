@@ -3,12 +3,13 @@ import React from 'react';
 import { useAppUnlock } from './useAppUnlock';
 
 /**
- * Renders its children only when the app is unlocked.
+ * Renders the router unless the app is locked.
  *
- * The unlock and setup screens are rendered by the `(auth)` route group, which
- * reads the same store, so this component only has to decide whether the app is
- * allowed through. That keeps the launch decision in one place and makes it
- * testable without mounting the whole router.
+ * `children` is the entire root navigator, and `app/(auth)` sits inside the same
+ * `<Stack>` as `app/(tabs)` (see `app/_layout.tsx`). The gate is therefore handed
+ * both route groups at once and cannot pick between them: it can only decide
+ * whether the router mounts at all. Keeping `(tabs)` out of reach on a first run
+ * is the job of the `Redirect` in `app/(tabs)/_layout.tsx`, not this component.
  */
 export function RootLayoutNavGate({ children }: { children: React.ReactNode }) {
   const unlock = useAppUnlock();
@@ -17,13 +18,18 @@ export function RootLayoutNavGate({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  if (unlock.phase === 'unlocked') {
+  // `no-account` has to mount the router too, or `setup.tsx` — which lives
+  // inside `(auth)` — is unreachable and a fresh install shows a blank screen
+  // forever. It is safe because `useAppUnlock` returns before
+  // `authenticateForApp()` when there is no profile, and because `(tabs)`
+  // redirects to `(auth)/setup` for any session that is not unlocked.
+  if (unlock.phase === 'unlocked' || unlock.phase === 'no-account') {
     return <>{children}</>;
   }
 
-  // While locked (or before an account exists) the `(auth)` group owns the
-  // screen: `unlock` for a returning user, `setup` for a first run. Rendering
-  // `children` here would be the bypass this gate exists to prevent.
+  // `locked` only: a stored profile that has not been verified must not reach
+  // the router, and rendering `children` here is the bypass this gate exists to
+  // prevent.
   return null;
 }
 
