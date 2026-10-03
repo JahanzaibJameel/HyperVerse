@@ -76,23 +76,40 @@ jobs:
       # flag comes off and the job gates for real.
       - name: Audit dependencies
         id: audit
-        run: pnpm audit --audit-level=high
+        run: |
+          set +e
+          pnpm audit --audit-level=high --json > audit.json 2>/dev/null
+          code=$?
+          set -e
+          echo "pnpm audit exited $code"
+          exit $code
         continue-on-error: true
 
-      # Reads the audit step's real outcome and restates it, so the run page says
-      # in words that advisories were found rather than leaving a bare exit-code
-      # error next to a green job.
+      # Restates the audit outcome as an annotation, including the severity
+      # breakdown, so the run page carries the numbers rather than a bare
+      # exit-code error.
       #
-      # With `continue-on-error: true`, `outcome` keeps the original failure while
-      # `conclusion` is rewritten to success — this step deliberately reads
-      # `outcome`, since `conclusion` would always report success here.
+      # Reads `steps.audit.outcome`, not `conclusion`: with continue-on-error,
+      # `conclusion` is rewritten to success and would always report "clean".
+      #
+      # `audit.json` is deliberately NOT cat'd. It expands every dependency path
+      # and reached ~396 MB on this tree, which would flood the step log and slow
+      # the job for no benefit — only `.metadata.vulnerabilities` is read here.
       - name: Summarise advisory findings
         if: always()
         env:
           AUDIT_OUTCOME: ${{ steps.audit.outcome }}
         run: |
+          set -euo pipefail
+          if [ ! -s audit.json ]; then
+            echo "::error title=Dependency audit produced no JSON::pnpm audit --json wrote nothing, so severity counts are unknown. Treat this as a failed audit."
+            exit 0
+          fi
+          counts=$(jq -r '.metadata.vulnerabilities |
+            "\(.critical) critical, \(.high) high, \(.moderate) moderate, \(.low) low"' audit.json)
+          total=$(jq -r '.advisories | length' audit.json)
           if [ "$AUDIT_OUTCOME" = "failure" ]; then
-            echo "::warning title=Dependency audit found advisories::pnpm audit --audit-level=high exited non-zero. Advisory job: this does not fail the pipeline. The advisory list is in the 'Audit dependencies' step log; triage is tracked in docs/followups.md."
+            echo "::warning title=Dependency audit found advisories::$total unique advisories — $counts. Advisory job: does not gate the pipeline. Full list in the 'Audit dependencies' step output; triage in docs/followups.md."
           else
-            echo "::notice title=Dependency audit clean::pnpm audit --audit-level=high reported no high or critical advisories."
+            echo "::notice title=Dependency audit clean::No high or critical advisories ($counts)."
           fi

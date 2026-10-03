@@ -215,6 +215,25 @@ always takes its local-only path. Their imports now correctly target
 runtime. Decide: delete the module, or wire it into a screen. Separate commit —
 explicitly not part of the dependency alignment.
 
+> **CORRECTION (2026-10-03) — the reachability claim above is wrong; the
+> runtime claim is right.** `lib/ai/` *is* reachable from shipped code:
+> `app/(tabs)/ai.tsx` imports `lib/ai/AIService.ts`, which imports
+> `ModelManager` at `lib/ai/AIService.ts:1` and `VectorStore` at `:2`, and
+> `ModelManager` imports `@xenova/transformers` at
+> `lib/ai/models/ModelManager.ts:4`. So these files are statically bundled, not
+> orphaned — "not imported by any screen or service" does not hold.
+>
+> What *is* accurate: `ModelManager.initialize()` is never called, so
+> `activePipeline` stays `null` and `AIService` does take its local-only path.
+> The code ships but never executes.
+>
+> This matters for security triage, not just tidiness: `@xenova/transformers`
+> is a production dependency and drags 8 critical/high advisories
+> (`protobufjs` ×6, `sharp` ×2) into the shipped bundle in a dormant state.
+> Dormant is not the same as absent, and the fix is now security work rather
+> than optional cleanup. See "Dependency advisory triage". The original text is
+> left in place above so the correction is visible against what it replaces.
+
 Also unresolved in that module, for whenever it is revived: `ModelManager`
 downloads a relative path (`expo-file-system` requires absolute), fetches
 `model_quantized.onnx` without `config.json`/`tokenizer.json` while
@@ -230,3 +249,113 @@ most likely dead code — and it references `@react-native`, which is not instal
 bundles devDependencies and offers no per-package exclusion) and lint passes with
 zero errors and zero warnings, so this is **not urgent**. Still worth deciding:
 delete the legacy file and keep flat, or reinstate a working legacy path.
+## Dependency advisory triage
+
+Measured 2026-10-03 with `pnpm audit --audit-level=high --json` (pnpm 9.15.0),
+which reports **96 line-items** but only **93 unique advisories** across all
+severities, and **59 line-items / 44 unique GHSA IDs / 16 modules** at
+high+critical. The line-item count is not the number of decisions: an advisory
+spanning several major-version ranges is reported once per range, so
+`brace-expansion` is 15 line-items but 5 advisories, and `ws` is 3 line-items
+but 1. Path counts are larger still and mean nothing for triage —
+`protobufjs` reaches 1,117,571 dependency paths and is still one advisory.
+
+**Method — and its limit.** Each advisory was classified by walking its
+dependency paths in the installed tree and checking, edge by edge, whether the
+vulnerable package is reached through a parent's `dependencies` (a production
+edge) or only through `devDependencies`/`peerDependencies` (a build edge). This
+is verifiable and reproducible, but it is **conservative**: it proves
+"declared as a production dependency", not "present in the shipped JS bundle".
+Those differ. `expo` declares `@expo/cli`, `metro` and `react-devtools-core` as
+production `dependencies`, so every advisory under them registers as a
+production edge — yet none of those tools is ever imported from `app/`, so
+Metro never bundles them. Settling that gap needs a real bundle
+(`react-native-bundle-visualizer` is already a devDependency for exactly this).
+
+**Result: zero advisories are provably build-only. All 59 high+critical
+have at least one production edge.** So the allowlist is empty, and
+`pnpm audit --audit-level=high` still exits 1. That is the correct outcome:
+an empty allowlist is an honest one, and 59 accept decisions made without
+bundle evidence would not be.
+
+### The one genuinely app-reachable cluster
+
+`@xenova/transformers` is a **production** dependency and is statically
+reachable: `app/(tabs)/ai.tsx` → `lib/ai/AIService.ts:1` →
+`lib/ai/models/ModelManager.ts:4` → `@xenova/transformers` → `onnxruntime-web`
+→ `onnx-proto` → `protobufjs`, plus `sharp`. That is 8 critical/high advisories
+that ship in the bundle.
+
+A note recorded earlier in this file claimed `lib/ai/models/ModelManager.ts` and
+`lib/ai/rag/VectorStore.ts` are "not imported by any screen or service". **That is
+wrong** — see the correction block under "Product / scope" above, kept adjacent
+to the original text rather than deleted. `lib/ai/` is reached from
+`app/(tabs)/ai.tsx` via `AIService.ts:1` → `ModelManager.ts:4` →
+`@xenova/transformers`, so these packages are in the shipped bundle. What is
+accurate is narrower: `ModelManager.initialize()` is never called,
+`activePipeline` stays `null`, and the vulnerable code paths (protobuf parsing,
+image decoding, inference) therefore never *execute*. Shipped-but-dormant, not
+absent. Treat these 8 as the highest-priority items: the fix is either wiring
+the AI module up properly (which makes them live) or removing
+`@xenova/transformers` from `dependencies` entirely (which takes 8 advisories
+and a large unused dependency out at once).
+
+### Unpatchable
+
+Two advisories have no fixed version at all (`Patched versions: <0.0.0`) and so
+can never be resolved by a version bump:
+
+| Advisory | Module | Path | Patched |
+| --- | --- | --- | --- |
+| `GHSA-86w9-cpqp-85rv` | `node-forge` | `@expo/code-signing-certificates` | none |
+| `GHSA-ch52-4w7c-c8xp` | `http-cache-semantics` | `@expo/ngrok` → `got` | none |
+
+`braces` (`GHSA-vfj7-8cjw-p6xm`) also reports no patch. These force an
+accept-or-remove decision, and `@expo/ngrok` is the most tractable of the three
+— it is a devDependency used for tunneled dev builds and can simply be dropped
+if remote dev is not used.
+
+### Allowlist mechanism
+
+`pnpm audit` in 9.15.0 has **no `--ignore` flag** — verified against
+`pnpm audit --help`, which lists only `--audit-level`, `-D/--dev`, `--fix`,
+`--ignore-registry-errors`, `--json`, `--no-optional`, and `-P/--prod`. The
+allowlist is `pnpm.auditConfig.ignoreGhsas` in `package.json`, and it is
+honoured: adding `GHSA-ch52-4w7c-c8xp` changed the summary line to
+`Severity: 4 low | 33 moderate | 56 high (1 ignored) | 3 critical`.
+
+It is currently **empty on purpose**. When an advisory is genuinely accepted,
+add its GHSA ID there *and* a line in this section saying which bucket it is in
+and why — an unexplained ignore is indistinguishable from a suppressed finding.
+
+### Per-module summary
+
+| Module | Sev | Unique GHSA | Vulnerable range(s) | Patched | Entry points |
+| --- | --- | ---: | --- | --- | --- |
+| `protobufjs` | critical | 6 | `<7.5.5`, `<=7.5.5`, `<=7.6.0` | `>=7.5.5`, `>=7.5.6`, `>=7.6.1` | `@xenova/transformers` |
+| `shell-quote` | critical | 2 | `>=1.1.0 <=1.8.3`, `<=1.8.4` | `>=1.8.4`, `>=1.9.0` | `expo`, `@react-native-async-storage/async-storage` |
+| `tar` | critical | 3 | `<=7.5.17`, `<=7.5.18`, `<=7.5.20` | `>=7.5.18`, `>=7.5.19`, `>=7.5.21` | `@expo/cli`, `expo`, `jest-expo`, `sentry-expo` |
+| `@xmldom/xmldom` | high | 8 | `>=0.7.0 <=0.8.13`, `>=0.7.0 <=0.8.14` | `>=0.8.14`, `>=0.8.15` | `expo`, `expo-application` |
+| `brace-expansion` | high | 5 | `1.x <1.1.20`, `2.x <2.1.6`, `4.x <5.0.11` | `>=1.1.20`, `>=2.1.6`, `>=5.0.11` | `expo`, `@expo/cli`, `detox`, `eslint*`, `jest*`, `storybook*` |
+| `braces` | high | 1 | `<=3.0.3` | **none** | `expo`, `@react-native-async-storage/async-storage` |
+| `browserslist` | high | 2 | `<=4.28.6` | `>=4.28.7` | `@react-native-async-storage/async-storage` |
+| `http-cache-semantics` | high | 1 | `<=4.2.0` | **none** | `@expo/ngrok` |
+| `image-size` | high | 2 | `>=0.6.3 <=2.0.2`, `>=1.2.0 <=2.0.2` | `>=2.0.3` | `expo`, `react-native` |
+| `js-yaml` | high | 3 | `3.x <3.15.2`, `4.x <4.3.0`, `4.x <4.3.1`, `4.x <4.3.2` | `>=3.15.2`, `>=4.3.2` | `expo`, `@expo/cli`, `babel-jest`, `jest-expo` |
+| `nanoid` | high | 3 | `<3.3.12`, `<3.3.16`, `<3.3.18` | `>=3.3.18` | `expo`, `expo-application`, `expo-blur` |
+| `node-forge` | high | 1 | `<=1.4.0` | **none** | `@expo/code-signing-certificates` |
+| `postcss` | high | 2 | `<=8.5.11`, `<=8.5.17` | `>=8.5.12`, `>=8.5.18` | `expo`, `expo-*` |
+| `sharp` | high | 2 | `<0.35.0`, `<0.35.4` | `>=0.35.0`, `>=0.35.4` | `@xenova/transformers` |
+| `undici` | high | 2 | `<6.27.0`, `>=6.7.0 <6.28.1` | `>=6.27.0`, `>=6.28.1` | `@expo/cli`, `expo` |
+| `ws` | high | 1 | `>=6.0.0 <6.2.4`, `>=7.0.0 <7.5.11`, `>=8.0.0 <8.21.0` | `>=6.2.4`, `>=7.5.11`, `>=8.21.0` | `expo`, `@expo/cli`, `detox` |
+
+### Suggested order of work
+
+1. **Decide `@xenova/transformers`** — remove it or wire it up. Resolves 8
+   advisories including the only critical one that ships.
+2. **Drop `@expo/ngrok`** if remote dev builds are unused — removes an
+   unpatchable advisory and a devDependency.
+3. **Bundle-analyse** with `react-native-bundle-visualizer` to separate
+   declared-production edges from actually-bundled code. This is what turns the
+   remaining ~48 advisories from "unknown" into a real accept/fix decision.
+4. **Only then** populate the allowlist and remove `continue-on-error`.
