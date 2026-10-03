@@ -27,7 +27,13 @@
           "origin": "https://replit.com/"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Allow HyperVerse to use Face ID to protect your data."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
