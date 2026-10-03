@@ -1,7 +1,132 @@
 # SDK 54 dependency alignment
 
+Aligns the Expo module graph to the versions SDK 54 was built against, so the
+auth hardening in `256183b` runs against the packages it was written for rather
+than three majors behind.
+
 Baseline captured by `npx expo install --check` before any change; see
 `docs/sdk-54-alignment-preflight.txt` for the verbatim output.
+
+`npx expo install --check` after the change reports **`Dependencies are up to
+date`** — no remaining mismatches.
+
+## 1. Pre/post versions
+
+`expo install --fix` resolved every target; no version below was chosen by hand.
+
+| Package | Pre | Post |
+| :-- | :-- | :-- |
+| `expo` | 54.0.33 | 54.0.37 |
+| `expo-constants` | 18.0.13 | 18.0.14 |
+| `expo-crypto` | 14.0.2 | 15.0.9 |
+| `expo-file-system` | 18.0.12 | 19.0.24 |
+| `expo-font` | 14.0.11 | 14.0.12 |
+| `expo-glass-effect` | 0.1.9 | 0.1.10 |
+| `expo-linking` | 8.0.11 | 8.0.12 |
+| `expo-local-authentication` | 14.0.1 | 17.0.9 |
+| `expo-router` | 6.0.23 | 6.0.24 |
+| `expo-secure-store` | 12.8.1 | 15.0.8 |
+| `expo-splash-screen` | 0.27.7 | 31.0.13 |
+| `expo-sqlite` | 13.2.2 | 16.0.10 |
+| `expo-status-bar` | 1.12.1 | 3.0.9 |
+| `expo-system-ui` | 3.0.7 | 6.0.9 |
+| `expo-web-browser` | 13.0.3 | 15.0.11 |
+| `react-native-keyboard-controller` | 1.21.5 | 1.18.5 |
+
+Also raised by `--fix` and therefore part of this alignment:
+`eslint-config-expo` 8.0.1 → 10.0.0 (a devDependency; see §5).
+
+## 2. Grouped by bump type
+
+**Major (10).** `expo-crypto` 14→15 · `expo-file-system` 18→19 ·
+`expo-local-authentication` 14→17 · `expo-secure-store` 12→15 ·
+`expo-splash-screen` 0.27→31 (a versioning reset to the unified scheme, not a
+30-major jump) · `expo-sqlite` 13→16 · `expo-status-bar` 1→3 ·
+`expo-system-ui` 3→6 · `expo-web-browser` 13→15 · `eslint-config-expo` 8→10.
+
+**Minor (0).** None.
+
+**Patch (6).** `expo` 54.0.33→54.0.37 · `expo-constants` 18.0.13→18.0.14 ·
+`expo-font` 14.0.11→14.0.12 · `expo-glass-effect` 0.1.9→0.1.10 ·
+`expo-linking` 8.0.11→8.0.12 · `expo-router` 6.0.23→6.0.24.
+
+**Downgrade (1).** `react-native-keyboard-controller` 1.21.5→1.18.5. The
+installed version overshot the SDK 54 expectation via a `^` range; `expo
+install --fix` pins it correctly where `npm update` would not.
+
+## 3. Code changes required
+
+One package required source changes: **`expo-file-system`**, whose 19.0.0
+breaking change made the modern `Directory`/`File` API the default export and
+moved the imperative API to `expo-file-system/legacy`.
+
+- `lib/ai/models/ModelManager.ts:3`
+- `lib/ai/rag/VectorStore.ts:3`
+
+Both changed from `import * as FileSystem from 'expo-file-system'` to
+`'expo-file-system/legacy'`, each with a comment recording why.
+
+All nine legacy symbols these files call were verified present in the 19.0.24
+legacy entry point (`legacy.ts` → `src/legacy` → re-exports `FileSystem` +
+`FileSystem.types`) **before** the edit, and confirmed resolving by
+`tsc --noEmit` afterwards:
+
+```
+documentDirectory              PRESENT      getInfoAsync            PRESENT
+makeDirectoryAsync             PRESENT      readAsStringAsync       PRESENT
+writeAsStringAsync             PRESENT      readDirectoryAsync      PRESENT
+deleteAsync                    PRESENT      getFreeDiskStorageAsync PRESENT
+createDownloadResumable        PRESENT
+```
+
+**`app.json` also gained a config-plugin entry.** `expo install --fix` added
+`"expo-secure-store"` to `plugins`, and this commit configures it:
+
+```json
+["expo-secure-store", { "faceIDPermission": "Allow HyperVerse to use Face ID to protect your data." }]
+```
+
+This is load-bearing for the auth fix, not cosmetic. The plugin injects
+`NSFaceIDUsageDescription`, without which `authenticateAsync` fails on a real
+iOS device and App Store review rejects the build. No manual
+`ios.infoPlist` entry exists, so the plugin is the single source of truth.
+
+## 4. Test-mock changes
+
+Rewrites were confined to `jest.setup.js`. **No test assertion was changed
+anywhere in this work.**
+
+- **`expo-local-authentication`** — the mock exposed 4 exports against the real
+  module's 6 functions + 2 enums. Added `getEnrolledLevelAsync`,
+  `cancelAuthenticate`, `SecurityLevel`, `AuthenticationType`. Enum values were
+  checked against the built `LocalAuthentication.types.js`: numeric and
+  matching (`NONE: 0`, `SECRET: 1`, `BIOMETRIC_WEAK: 2`, `BIOMETRIC_STRONG: 3`,
+  `FINGERPRINT: 1`, `FACIAL_RECOGNITION: 2`, `IRIS: 3`). `SecurityLevel.BIOMETRIC`
+  is deliberately omitted — the real enum resolves it through a
+  deprecation-warning getter that depends on `Platform`.
+- **`expo-secure-store`** — the mock exposed 4 exports against 6 functions + 7
+  constants. Added the synchronous `getItem`/`setItem`,
+  `canUseBiometricAuthentication`, and all seven accessibility constants. No
+  constant was renamed between 12.8.1 and 15.0.8, and this repo never passes
+  `keychainAccessible`, so their values are inert.
+- **`expo-file-system`** — the original mock had drifted: it covered the legacy
+  API only, and was missing `readDirectoryAsync` and
+  `getFreeDiskStorageAsync`. With the imports moved, both the legacy path and
+  the modern default path are mocked.
+
+Why any of this mattered: `jest.mock` replaces a module wholesale, so an export
+absent from the mock is `undefined` to a caller. The gaps would have surfaced as
+`undefined is not a function` at the moment someone reached for the API, not at
+the moment the mock was written.
+
+## 5. `eslint-config-expo`
+
+`--fix` bundled this devDependency into the batch and offers no per-package
+exclusion, so it moved 8.0.1 → 10.0.0 rather than being held back. Lint was
+re-verified afterwards and passes with zero errors and zero warnings, so the
+repo's dual ESLint setup (`.eslintrc.js` legacy + `eslint.config.mjs` flat)
+survived the two-major bump. Cleanup of that duplication is tracked in
+`docs/followups.md`.
 
 ## Changelog review
 
@@ -213,11 +338,35 @@ The four Tier 4 packages and `expo-sqlite` are **declared but never imported**,
 which is why their majors are low risk here. That is a pre-existing dependency
 hygiene problem, not something this alignment introduces.
 
-### Positive finding: `react-native-reanimated`
+### Positive findings
 
-Installed `4.1.7` against `package.json`'s `~4.1.1`, and **absent from
-`expo install --check`** — i.e. it already satisfies SDK 54's expected range.
-Not touched by this commit, as instructed.
+**`react-native-reanimated` — already compliant, untouched.** Installed `4.1.7`
+against `package.json`'s `~4.1.1`, and **absent from `expo install --check`**,
+i.e. it already satisfied SDK 54's expected range. Absence from the list is the
+only signal available — the check does not report compliant packages — so this
+was confirmed independently rather than assumed. Not bumped.
+
+**Duplicate `expo-file-system` resolved by alignment.** `expo-doctor` had
+reported the native module present twice: `18.0.12` direct and `19.0.21`
+nested under `expo`. Aligning the direct dependency to `~19.0.24` collapsed
+these to a single copy. Resolved by the bump; nothing else was changed to
+achieve it.
+
+## Known warnings not fixed in this commit
+
+**WatermelonDB `LokiJSAdapter {useIncrementalIndexedDB: false}` deprecation.**
+The Jest adapter mock (`jest.setup.js:166`) passes this option and has since it
+was written; WatermelonDB 0.27.1 emits a warning twice per test run.
+
+It was tried and reverted: the option is **mandatory**, not merely deprecated.
+Omitting it throws `LokiJSAdapter \`useIncrementalIndexedDB\` option is
+required` at adapter construction and fails both database suites (184/210
+passing). The two legal states are `true` (new IndexedDB persistence) or
+`false` (previous behaviour, warning suppressed). `false` is required here to
+keep the mock synchronous for Jest. Silencing the warning therefore means
+changing persistence semantics and re-validating the database suites, which
+trades a cosmetic warning for real regression risk. Tracked in
+`docs/followups.md`.
 
 ## Outstanding manual verification
 
@@ -259,3 +408,20 @@ Run on a simulator or device:
 Steps 9–12 have no automated coverage at all. Steps 1–8 exercise the behaviour
 the mocked tests assert, so a failure there would indicate the mock and the real
 API disagree — that is the specific risk this alignment was meant to retire.
+
+13. **Verify the Face ID consent string actually landed.** The
+    `expo-secure-store` plugin only takes effect at prebuild time, so the
+    `NSFaceIDUsageDescription` key does not exist until step 1 runs. After the
+    first native build, confirm the key is present with the expected value —
+    on iOS via Xcode target settings → Info, or:
+    `npx expo config --type prebuild` / inspect the generated `ios/*/Info.plist`.
+    Then confirm the Face ID prompt shows the intended purpose string. A missing
+    key means `authenticateAsync` fails silently on device even though every test
+    passes.
+14. Re-run steps 4–6 **after** the native build specifically, since the prebuild
+    is what introduces the new native module wiring for `expo-secure-store` and
+    `expo-local-authentication` at their new majors.
+15. Exercise the AI model-download path (Settings → AI) to confirm the
+    `expo-file-system/legacy` import migration works on real hardware — cache
+    directory creation, model write, and cache read-back. The mock cannot
+    exercise a native module, and this path is currently unreachable from the UI.
