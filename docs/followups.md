@@ -71,6 +71,50 @@ inferred. Do not add this preemptively — wait for CI signal. CI runs on
 `ubuntu-latest`, which may or may not reproduce a Windows/Node-25-specific timing
 issue.
 
+**Detox is blocked on a testID audit, not on CI wiring.** `__tests__/e2e/` holds
+two specs (`auth.e2e.ts`, `userJourneys.e2e.ts`) that no workflow runs, and they
+have never been compiled against a real app. Before wiring them into a device
+matrix, the premise needs checking rather than assuming: the specs reference
+`testID`s that do not exist in `app/`. That premise is **partly wrong** — it
+reads as "every referenced testID is missing" but at least
+`app/(auth)/unlock.tsx:104` already carries `testID="unlock-retry-button"`. So
+the real work is an audit of which selectors are missing versus which already
+resolve, not a bulk find-and-replace. Do not start the device matrix before that
+audit, and do not add the selectors blind: a `testID` added only to satisfy a
+spec is a test-only change to shipping UI. Out of scope for the CI commit
+`e87fbac`; this is the next CI-shaped piece of work.
+
+## Data layer
+
+**`AIRepository` ordering is not guaranteed for same-millisecond messages.**
+`orderByCreatedThenId()` sorts `created_at` then `id`, and `id` is a WatermelonDB
+random string rather than a monotonic counter. When a user message and its reply
+land in the same millisecond the rows come back in whatever order those random
+strings happen to sort — stable within one result set, meaningless across
+machines. This surfaced as a real CI failure on `e8bd322`: the ordering test
+passed on Windows and failed on `ubuntu-latest` for no reason related to the code
+under test. Fixed in the test by pinning distinct `created_at` values (`e87fbac`),
+and the repository comment now says what it actually guarantees.
+
+**The same exposure is still live in the app, not just the test.**
+`app/(tabs)/ai.tsx:213-227` writes the user's message and the assistant reply
+back to back, so a same-millisecond collision is plausible on a fast device.
+`ai.tsx:167` reads them back through `findBySession`, and `ai.tsx:305` renders
+`[...aiMessages].reverse()` inside an `inverted` FlatList — so a collision can
+invert chat order visibly, not merely return rows in an arbitrary sequence. Not
+fixable without a schema change: either a monotonic sequence column, or
+client-generated sortable ids. Worth deciding before the assistant is used on
+real data, since it is a correctness issue in the feature's headline surface.
+
+**`AIRepository.createMany` now has no caller at all.** It had exactly one — the
+ordering test — and that test now calls `create` twice with a clock gap.
+`git grep createMany` finds no production importer either. It is dead code, and
+deleting it would recover the ~6 statements currently uncovered in
+`AIRepository.ts` (100% → 71.42% statements, 85.71% functions). Left in place
+deliberately in `e87fbac`: removing it in the same commit as a coverage-floor
+change would have conflated two decisions and made the threshold's first
+measurement harder to interpret.
+
 ## Device verification (all require a physical device or emulator)
 
 None of the following can be automated in this repo; the Jest suite mocks both
