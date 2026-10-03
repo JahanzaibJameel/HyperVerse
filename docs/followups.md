@@ -260,6 +260,27 @@ spanning several major-version ranges is reported once per range, so
 but 1. Path counts are larger still and mean nothing for triage —
 `protobufjs` reaches 1,117,571 dependency paths and is still one advisory.
 
+**Reconciling the run-page annotation.** The CI annotation reads
+`93 unique advisories — 3 critical, 56 high, 33 moderate, 4 low`, and the two
+halves come from different fields in pnpm's JSON and are not expected to agree:
+
+- `93 unique advisories` is `.advisories | length` — the count of advisories.
+- `3 critical, 56 high, 33 moderate, 4 low` is `.metadata.vulnerabilities` —
+  the count of *module entries*, which sums to **96**.
+
+Measured per-severity, the two agree exactly on critical (3), high (56) and low
+(4), and differ only on moderate — `metadata` says 33, unique advisories say
+**30**. That gap of 3 is `metadata.vulnerabilities` counting an advisory once per
+module name it covers while `.advisories` counts it once, so an advisory spanning
+two module names contributes 2 to the first and 1 to the second. The specific
+three are inferred, not confirmed — the parsed JSON was not retained.
+
+**44 is the number that matters for gating.** `--audit-level=high` only fails on
+high and critical, so the gated set is 3 + 56 = 59 line-items = **44 unique GHSA
+IDs**. The 49 moderate/low advisories never gate the audit and need no bundle
+evidence. If you are reconciling counts, use 44 against high+critical and ignore
+the annotation's all-severity figure.
+
 **Method — and its limit.** Each advisory was classified by walking its
 dependency paths in the installed tree and checking, edge by edge, whether the
 vulnerable package is reached through a parent's `dependencies` (a production
@@ -359,3 +380,117 @@ and why — an unexplained ignore is indistinguishable from a suppressed finding
    declared-production edges from actually-bundled code. This is what turns the
    remaining ~48 advisories from "unknown" into a real accept/fix decision.
 4. **Only then** populate the allowlist and remove `continue-on-error`.
+### Bundle reachability (measured)
+
+**Target: iOS Metro bundle.** Measured 2026-10-03 on `2686b4d` with
+`npx expo export --platform ios --dump-sourcemap`, twice — once producing Hermes
+bytecode (`entry-*.hbc`, 5.13 MB) and once plain JS (`entry-*.js`, 5.63 MB) via
+`--no-bytecode`. Both builds bundled **2447 modules / 2454 sourcemap sources**,
+covering **105 distinct packages**. Both were analysed; both agree.
+
+**Tooling note: `react-native-bundle-visualizer@3.2.0` was tried and did not
+work here.** Its default mode shells out to `react-native bundle`, which needs
+`@react-native-community/cli` — absent, as expected in an Expo managed project
+where that CLI is not a dependency. Its `--expo` mode was not reached, and
+calling `source-map-explorer@2.5.3` directly against either the `.hbc` (it
+cannot read Hermes bytecode) or Metro's `.js.map` (format it does not parse)
+failed with an opaque error both times. Rather than fight it, the measurement
+below falls back to analysing the export's own sourcemap, which is stronger
+evidence for this question anyway: `sources` gives exactly which module files
+Metro included, and `sourcesContent` gives their size.
+
+**Sizes are `sourcesContent` byte lengths — source bytes, not gzipped bundle
+contribution.** They indicate presence and rough weight, not shipped size.
+
+#### Sanity check performed before trusting any "absent"
+
+Absence is only meaningful if the matcher works, so known-present packages were
+checked first:
+
+| Package | Found | Files | | Package | Found | Files |
+|---|:--:|---:|---|---|:--:|---:|
+| `react-native` | ✅ | 421 | | `jest` | ✅ absent | 0 |
+| `@react-navigation/*` | ✅ | 170 | | `eslint` | ✅ absent | 0 |
+| `@nozbe/watermelondb` | ✅ | 101 | | `typescript` | ✅ absent | 0 |
+| `expo-router` | ✅ | 116 | | `detox` | ✅ absent | 0 |
+| `expo` | ✅ | 33 | | `@babel/core` | ✅ absent | 0 |
+| `zustand`, `react`, `expo-secure-store` | ✅ | 4/6/3 | | `@expo/cli-server` | ✅ absent | 0 |
+
+9 of 10 must-be-present packages resolved with substantial file counts, so the
+matcher is sound.
+
+**Disclosed limitation.** The tenth, `expo-sqlite`, also came back absent even
+though the app depends on it — `@nozbe/watermelondb/adapters/sqlite/*` is
+bundled but `expo-sqlite` itself is not, because WatermelonDB loads it
+dynamically. So this method reports **absent for dynamically-imported modules**.
+Nothing in the triage-16 set is dynamically imported by the app, but a future
+entry could be, and an "absent" verdict should be read as "not in the initial
+bundle" rather than "unreachable at runtime".
+
+#### Results — 16 modules, 44 unique GHSAs
+
+| Module | In bundle? | Size (source bytes) | Evidence |
+|---|:--:|---:|---|
+| `protobufjs` | **no** | — | absent from both sourcemaps; 0 of 6 GHSAs bundled |
+| `sharp` | **no** | — | absent. Native `.node` addon plus JS shim — neither shipped |
+| `shell-quote` | **no** | — | absent |
+| `tar` | **no** | — | absent |
+| `undici` | **no** | — | absent |
+| `js-yaml` | **no** | — | absent |
+| `image-size` | **no** | — | absent |
+| `brace-expansion` | **no** | — | absent (0 of 5 GHSAs bundled) |
+| `braces` | **no** | — | absent |
+| `node-forge` | **no** | — | absent |
+| `http-cache-semantics` | **no** | — | absent |
+| `ws` | **no** | — | absent (0 of 1 GHSAs bundled) |
+| `@xmldom/xmldom` | **no** | — | absent (0 of 8 GHSAs bundled) |
+| `browserslist` | **no** | — | absent |
+| `postcss` | **no** | — | absent |
+| **`nanoid`** | **YES** | **497 B**, 1 module | `nanoid@3.3.11` → `nanoid/non-secure/index.js` |
+
+**15 of 16 modules are absent. 3 of 44 GHSAs are in the shipped bundle — all
+three are `nanoid`.** Installed `nanoid@3.3.11` is below every patched threshold
+in the table (`>=3.3.12`, `>=3.3.16`, `>=3.3.18`), so
+`GHSA-28wg-ghj8-5hjv`, `GHSA-2v37-7h3g-55p8` and `GHSA-xwg4-73v4-xw9w` are all
+live. Only the `non-secure` entry point ships, which is the `Math.random()`
+generator the advisories concern. Nothing in `app/` or `lib/` imports `nanoid`
+directly, so it arrives transitively — most likely via `expo-router` or
+`@xenova/transformers` — and the exact importer was not traced.
+
+#### The `@xenova/transformers` result is the interesting one
+
+This corrects the urgency of the correction recorded earlier in this file.
+`@xenova/transformers` **is** in the bundle — 16 source modules
+(`transformers.js`, `pipelines.js`, `backends/onnx.js`, `utils/image.js`, …) —
+along with `onnxruntime-web`, `onnxruntime-common` and `@huggingface/jinja`.
+**But `protobufjs`, `onnx-proto` and `sharp` are all absent.** `@xenova/transformers`
+resolves those lazily at inference time rather than through static imports, so
+Metro never pulls them in.
+
+So the 8 advisories attributed to that dependency — 6 `protobufjs` (including
+the tree's only critical, `GHSA-xq3m-2v4x-88gg`) and 2 `sharp` — are **not in
+the shipped bundle**. The dormant-module finding stands as a supply-chain and
+bundle-size problem, and as a landmine the moment the AI module is wired up, but
+it is not an active exposure today. That lowers its priority relative to `nanoid`
+despite the severity labels.
+
+#### Next decision
+
+- **`nanoid` (3 GHSAs, in bundle) — fix, do not accept.** A patch exists
+  (`>=3.3.18`), it is a `dev`-adjacent transitive with no behavioural risk to
+  upgrade, and it is the only measured live exposure in the gated set. Resolve it
+  with a `pnpm.overrides` entry or by nudging the parent, then re-measure.
+- **41 GHSAs across 15 modules (not in bundle) — eligible for
+  `auditConfig.ignoreGhsas`, one line each here citing this measurement.** Not
+  added in this commit: an ignore is a standing claim that a future dependency
+  change will not make the package reachable, and that claim needs re-checking
+  whenever these advisories are re-triaged. The entry is also only trustworthy
+  for the **iOS** bundle measured here — see below.
+- **Re-measure before closing the gate.** This covered iOS only. Android and web
+  were not analysed, and `@react-native-async-storage/async-storage`, `expo` and
+  `react-native` are shared across all three, so a platform-specific import could
+  differ. Run the same export for `--platform android` and `--platform web` before
+  treating "not in bundle" as universal, and before `continue-on-error` comes off.
+- **Separately: `nanoid`'s importer.** If it comes from `@xenova/transformers`,
+  removing that dependency clears these 3 GHSAs as a side effect, which would
+  make the audit triage and the dead-module question the same piece of work.
