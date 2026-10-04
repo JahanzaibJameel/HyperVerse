@@ -8,13 +8,55 @@ import {
 import AuthService, {
   type AppUnlockResult,
   type LockedReason,
+  type UserProfile,
 } from '@/lib/services/AuthService';
+import { UserRepository } from '@/lib/database/repositories/UserRepository';
 
 export type UnlockState =
   | { phase: 'checking' }
   | { phase: 'unlocked' }
   | { phase: 'locked'; reason: LockedReason; error?: string }
   | { phase: 'no-account' };
+
+/**
+ * Re-attach `dbId` to a profile that was persisted before it was known.
+ *
+ * `AuthService.createInitialProfile` writes the SecureStore copy before
+ * `app/(auth)/setup.tsx` creates the `users` row, so only the in-memory store
+ * ever saw the row id. Every primary screen opens with `if (!user?.dbId) return;`
+ * and scopes its queries by it, so on the next launch the whole app reads as
+ * empty while the rows sit intact in SQLite. The same `undefined` also reaches
+ * `deleteProfile(dbId?)`, whose cascade is guarded on `dbId` — so "delete all
+ * data" would clear the keychain and leave every domain row in plaintext.
+ *
+ * The id is re-derived from `deviceId` instead of being written back at setup
+ * time, because writing it at setup would repair only fresh installs and leave
+ * every already-broken install broken.
+ *
+ * A row that cannot be found leaves `dbId` undefined rather than creating one.
+ * A missing row after onboarding means something else is wrong — a wiped
+ * database, or a write that never landed — and silently creating a row here
+ * would mask that instead of surfacing it.
+ */
+async function resolveDbId(profile: UserProfile): Promise<UserProfile> {
+  if (profile.dbId) return profile;
+
+  try {
+    const row = await UserRepository.findByDeviceId(profile.deviceId);
+    if (!row) return profile;
+
+    const repaired: UserProfile = { ...profile, dbId: row.id };
+    // Persist so the next cold start does not have to look the row up again.
+    await AuthService.getInstance().saveUserProfile(repaired);
+    return repaired;
+  } catch (error) {
+    // A lookup failure is not a reason to invent an id, and not a reason to
+    // withhold the profile either: the caller still gets a usable identity and
+    // the screens' own `dbId` guard keeps them from querying without one.
+    console.error('Failed to re-derive dbId from deviceId', error);
+    return profile;
+  }
+}
 
 /**
  * Owns the launch-time unlock decision.
@@ -61,12 +103,16 @@ export function useAppUnlock(): UnlockState {
           return;
         }
 
-        setUser(profile);
+        const hydrated = await resolveDbId(profile);
+
+        if (cancelled) return;
+
+        setUser(hydrated);
 
         const result = await runUnlock();
 
         if (!cancelled && result.status === 'unlocked') {
-          markUnlocked(profile);
+          markUnlocked(hydrated);
         }
       } catch (error) {
         if (!cancelled) {
