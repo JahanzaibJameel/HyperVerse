@@ -79,7 +79,6 @@ jobs:
       # retired, this flag comes off and the job gates for real.
       - name: Audit dependencies
         id: audit
-        continue-on-error: true
         run: |
           set +e
           pnpm audit --audit-level=high > audit.txt 2>&1
