@@ -825,3 +825,15 @@ changing which generator the caller uses — it would be theatre.
 
 Re-verify if @react-navigation adopts a different ID source, or if nanoid
 is used anywhere in this repo for anything other than navigation.
+
+## pnpm resolution — expo/bin/cli entry-point sensitivity
+
+Calling `node node_modules/expo/bin/cli export ...` fails with
+MODULE_NOT_FOUND for babel-preset-expo. Calling the same export through
+`npx expo` or `pnpm exec expo` succeeds. The direct-path invocation's
+require stack does not reach .pnpm/node_modules; the shim's does.
+Declaring babel-preset-expo as a dependency removes this specific
+occurrence, but the underlying entry-point sensitivity is unexplained.
+Instrument pnpm's resolution when there is time; the general class —
+"direct node invocation of a bin file resolves differently than through
+the .bin shim" — is worth understanding, because it can hide real bugs.

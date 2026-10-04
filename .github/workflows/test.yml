@@ -37,6 +37,16 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # The only step in this file that invokes a bundler. `build.yml` is a
+      # token-gated no-op and never exports anything, so without this step
+      # nothing in CI would notice that the app had stopped bundling.
+      #
+      # Web only: it exercises the same Metro + babel transform path as the
+      # native platforms for JS, and needs no native toolchain. iOS and Android
+      # exports belong in a build job, not here.
+      - name: Verify bundle builds
+        run: npx expo export --platform web --output-dir /tmp/hv-export-check
+
       - name: Run tests
         run: pnpm test
 
