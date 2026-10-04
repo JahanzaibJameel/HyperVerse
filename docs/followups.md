@@ -370,9 +370,19 @@ allowlist is `pnpm.auditConfig.ignoreGhsas` in `package.json`, and it is
 honoured: adding `GHSA-ch52-4w7c-c8xp` changed the summary line to
 `Severity: 4 low | 33 moderate | 56 high (1 ignored) | 3 critical`.
 
-It is currently **empty on purpose**. When an advisory is genuinely accepted,
-add its GHSA ID there *and* a line in this section saying which bucket it is in
-and why — an unexplained ignore is indistinguishable from a suppressed finding.
+As of this commit the list holds **44 GHSAs** — 41 absent from the shipped
+bundle on all three platforms, plus 3 `nanoid` advisories accepted in-bundle.
+The two categories, and the conditions for revisiting each, are recorded under
+"Accepted advisories (ignoreGhsas)" below. When an advisory is genuinely
+accepted, add its GHSA ID there *and* a line saying which bucket it is in and
+why — an unexplained ignore is indistinguishable from a suppressed finding.
+
+**Table mode only.** `ignoreGhsas` filters the table and its `Severity:` line,
+but in 9.15.0 it does *not* filter `--json`: `.metadata.vulnerabilities` still
+counts ignored advisories and `--json` still exits non-zero. The audit job
+therefore runs table mode. Switching that step back to `--json` would silently
+discard the entire list, which is exactly the bug this section previously
+documented as working.
 
 ### Per-module summary
 
@@ -668,6 +678,8 @@ is a judgement for a human, not something to settle by bumping a version.
    and dead-code grounds alone — the security urgency in earlier notes was wrong.
 5. **Do not remove `continue-on-error` yet.** It should come off only once an
    ignore list exists and the gated set is either empty or fully justified.
+   (Both conditions are met as of this commit, which makes the gate real; the
+   flag comes off in the commit that follows.)
 #### Web measured — three-platform table now complete (after the adapter fix)
 
 The web export previously failed with `Unable to resolve module better-sqlite3`
@@ -778,3 +790,38 @@ one reviewable change, with the three-platform measurement to back them.
    reachable, and only a bundle re-measurement can catch that.
 4. **`@xenova/transformers` removal is now a size/dead-code decision**, not a
    security one — 0 of its 8 GHSAs are bundled on any platform.
+
+### Accepted advisories (ignoreGhsas)
+
+Two categories. Both suppress `--audit-level=high`. The reasons differ and
+must not be conflated on re-triage.
+
+**Category A — not in bundle (41 GHSAs across 15 modules)**
+
+Modules: protobufjs, sharp, shell-quote, tar, undici, js-yaml, image-size,
+brace-expansion, braces, node-forge, http-cache-semantics, ws,
+@xmldom/xmldom, browserslist, postcss.
+
+Evidence: absent from the `sources` array of `expo export --dump-sourcemap`
+on iOS (5.63 MB, 2448 modules), Android (5.63 MB, 2444), and Web
+(4.59 MB, 2131). Per-platform sanity probes recorded in the measurement
+section above.
+
+Standing claim: these packages are not reachable from the shipped bundle
+on any platform we build. Re-verify whenever dependency trees shift
+(expo upgrade, RN upgrade, or any change to @react-navigation /
+@expo/vector-icons which is where nanoid and most of these arrive).
+
+**Category B — in bundle, accepted use (3 GHSAs)**
+
+Package: nanoid@3.3.11 via expo → expo-router → @react-navigation/*
+(9 explicit `nanoid/non-secure` imports). See "Advisory disposition:
+nanoid" above for the full trace.
+
+Standing claim: `nanoid/non-secure` generates route keys and
+navigation-state IDs. No privilege boundary is keyed on unpredictability.
+A pnpm.overrides bump to 3.3.18 would satisfy a version scanner without
+changing which generator the caller uses — it would be theatre.
+
+Re-verify if @react-navigation adopts a different ID source, or if nanoid
+is used anywhere in this repo for anything other than navigation.

@@ -64,52 +64,37 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Advisory only: a high-severity advisory should not be able to block an
-      # unrelated fix, but it must be visible on every run.
+      # Table mode, not `--json`: in pnpm 9.15.0 `auditConfig.ignoreGhsas`
+      # filters table output and the `Severity:` summary line but NOT
+      # `.metadata.vulnerabilities` or the exit code. Running `--json` here
+      # meant the 44-entry ignore list had no effect on CI's exit state.
+      # `audit.txt` is a few KB, so `cat`-ing it is safe — the `--json` report
+      # expands every dependency path and reached ~396 MB on this tree.
       #
-      # `continue-on-error: true` is load-bearing and stays until the advisories
-      # are triaged. Without it this job cannot fail the pipeline, so a green tick
-      # on this job means only that the job ran — which is why the job is named
-      # `audit (advisory)` rather than `audit`, and why the summary step below
-      # restates the outcome as an explicit annotation. Triage is tracked in
-      # docs/followups.md; once each advisory is fixed or formally accepted, this
-      # flag comes off and the job gates for real.
+      # `continue-on-error: true` is load-bearing and stays until the accepted
+      # advisories are resolved. Without it this job cannot fail the pipeline,
+      # so a green tick on this job means only that the job ran — which is why
+      # the job is named `audit (advisory)` rather than `audit`. Triage is
+      # tracked in docs/followups.md; once each accepted advisory is fixed or
+      # retired, this flag comes off and the job gates for real.
       - name: Audit dependencies
         id: audit
+        continue-on-error: true
         run: |
           set +e
-          pnpm audit --audit-level=high --json > audit.json 2>/dev/null
+          pnpm audit --audit-level=high > audit.txt 2>&1
           code=$?
-          set -e
-          echo "pnpm audit exited $code"
+          cat audit.txt
           exit $code
-        continue-on-error: true
 
-      # Restates the audit outcome as an annotation, including the severity
-      # breakdown, so the run page carries the numbers rather than a bare
-      # exit-code error.
+      # Failure-only. A clean audit emits nothing: the accepted-advisory tally
+      # is already on every run page via the `Severity:` line in the step log,
+      # and restating it as an annotation each run read as "56 outstanding"
+      # when all 56 are accepted.
       #
-      # Reads `steps.audit.outcome`, not `conclusion`: with continue-on-error,
+      # Reads `steps.audit.outcome`, not `conclusion` — with continue-on-error,
       # `conclusion` is rewritten to success and would always report "clean".
-      #
-      # `audit.json` is deliberately NOT cat'd. It expands every dependency path
-      # and reached ~396 MB on this tree, which would flood the step log and slow
-      # the job for no benefit — only `.metadata.vulnerabilities` is read here.
-      - name: Summarise advisory findings
-        if: always()
-        env:
-          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+      - name: Audit summary
+        if: always() && steps.audit.outcome == 'failure'
         run: |
-          set -euo pipefail
-          if [ ! -s audit.json ]; then
-            echo "::error title=Dependency audit produced no JSON::pnpm audit --json wrote nothing, so severity counts are unknown. Treat this as a failed audit."
-            exit 0
-          fi
-          counts=$(jq -r '.metadata.vulnerabilities |
-            "\(.critical) critical, \(.high) high, \(.moderate) moderate, \(.low) low"' audit.json)
-          total=$(jq -r '.advisories | length' audit.json)
-          if [ "$AUDIT_OUTCOME" = "failure" ]; then
-            echo "::warning title=Dependency audit found advisories::$total unique advisories — $counts. Advisory job: does not gate the pipeline. Full list in the 'Audit dependencies' step output; triage in docs/followups.md."
-          else
-            echo "::notice title=Dependency audit clean::No high or critical advisories ($counts)."
-          fi
+          echo "::warning title=Dependency audit found new advisories::pnpm audit exited non-zero — high or critical advisories exist that are not in the ignoreGhsas list. Triage in docs/followups.md; add measured ignores to package.json."
