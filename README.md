@@ -2,13 +2,13 @@
 title: HyperVerse
 description: Offline-first React Native and Expo life-tracking app. Verified status, measured results, and known limitations.
 status: pre-release
-last_verified: 2026-09-29
+last_verified: 2026-10-05
 audience: all
 ---
 
 # HyperVerse
 
-**`pre-release`** · verified `2026-09-29` · ~6 min read
+**`pre-release`** · verified `2026-10-05` · ~6 min read
 
 An offline-first personal life-tracking app built with Expo and React Native. There is no
 backend: all state lives on the device in SQLite (WatermelonDB), AsyncStorage, and
@@ -17,7 +17,7 @@ SecureStore.
 > [!IMPORTANT]
 > **The screens are now connected to the database.** Tasks, habits, health, finance, settings,
 > and the AI assistant all read and write SQLite through `lib/database/repositories`. Measured
-> test coverage is 37.4%. This README reports measured numbers, not targets. Read
+> test coverage is 40.52% statements. This README reports measured numbers, not targets. Read
 > [Known limitations](#4-known-limitations) before relying on anything here.
 
 ## Contents
@@ -47,19 +47,19 @@ SecureStore.
 | Build pipeline | Working | `npm run build` emits iOS + Android bundles, 49 assets, valid manifests |
 | Type safety | Clean | `tsc --noEmit` → 0 errors |
 | Lint | Clean | `eslint` → 0 errors, **0 warnings** |
-| Tests | Passing | 192 tests, 11 suites |
+| Tests | Passing | 219 tests, 16 suites |
 | CI | Configured | Typecheck, lint, tests, coverage, and a dependency audit run on every PR |
 
 ## 2. Verified measurements
 
-Produced on **2026-09-29** (Windows) by running the command shown.
+Produced on **2026-10-05** (Windows) by running the command shown.
 
 | Check | Command | Result |
 | :-- | :-- | :-- |
 | Types | `npm run typecheck` | `0 errors` |
 | Lint | `npm run lint` | `0 errors, 0 warnings` |
-| Tests | `npm test` | `192 passed / 192 total` |
-| Coverage | `npm run test:coverage` | `37.4% stmts · 34.45% branch · 31.38% funcs` |
+| Tests | `npm test` | `219 passed / 219 total` |
+| Coverage | `npm run test:coverage` | `40.52% stmts · 36.5% branch · 34.34% funcs · 40.63% lines` (floors 38 / 34 / 33 / 38) |
 | iOS bundle | `npm run build` | `5.04 MB` minified |
 | Android bundle | `npm run build` | `5.05 MB` minified |
 
@@ -120,7 +120,7 @@ Ordered by how much each would affect someone using the app.
    therefore runs the local insight engine, which is grounded in your real records but is a
    deterministic template engine, not a language model. Downloading a model through
    `ModelManager` is wired up but untested on a real device.
-2. **Coverage is 37.4%.** Repositories, the insight engine, auth, and hooks are genuinely
+2. **Coverage is 40.52% statements.** Repositories, the insight engine, auth, and hooks are genuinely
    tested. `lib/ai/models`, `lib/ai/rag`, `components/ui`, and `lib/stores` are at or near 0%,
    and `app/` is excluded from the coverage globs entirely.
 3. **No encryption at rest.** `notes.is_encrypted` was removed in schema v2 rather than left as
@@ -188,11 +188,11 @@ Versions pinned in `package.json`.
 
 | Layer | Choice | Version |
 | :-- | :-- | :-- |
-| Framework | Expo, new architecture enabled | `~54.0.27` |
+| Framework | Expo, new architecture enabled | `~54.0.37` |
 | Runtime | React Native | `0.81.5` |
 | UI | React | `19.1.0` |
 | Language | TypeScript | `~5.9.2` |
-| Navigation | Expo Router, typed routes, React Compiler | `~6.0.17` |
+| Navigation | Expo Router, typed routes, React Compiler | `~6.0.24` |
 | Database | WatermelonDB over `expo-sqlite` | `^0.27.1` |
 | State | Zustand | `^5.0.1` |
 | AI | `@xenova/transformers` + local insight engine | `^2.17.2` |
@@ -256,8 +256,8 @@ All workflows run on pushes and pull requests to `main`, except `release.yml`, w
 | Workflow | Runs |
 | :-- | :-- |
 | `test.yml` | `pnpm install`, `typecheck`, `lint`, `test`, `test:coverage` |
-| `test.yml` (audit job) | `pnpm audit --audit-level=high`, advisory only |
-| `build.yml` | Web export, then the static build |
+| `test.yml` (`audit (advisory)`) | `pnpm audit --audit-level=high` in table mode. Gates the pipeline; 44 measured GHSAs are listed in `package.json` under `pnpm.auditConfig.ignoreGhsas` |
+| `Web Export (advisory)` (`build.yml`) | Web export only. Advisory, and **does not deploy** — it is a no-op while `EXPO_TOKEN` is unset |
 | `release.yml` | Tag-triggered release |
 
 > [!NOTE]

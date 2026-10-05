@@ -27,12 +27,21 @@ TS/TSX, so the version bump was risk-free precisely because nothing uses them:
 Separate cleanup commit: confirm no build-time plugin requirement before
 removing any of them.
 
-**Audit job is `continue-on-error`.** `.github/workflows/test.yml` runs
-`pnpm audit --audit-level=high` with `continue-on-error: true`. The job has never
-been able to fail the pipeline, so a green tick on it meant only that the job
-ran — it was read as "audit passed" when in fact the audit had been exiting 1.
-Renamed to `audit (advisory)` so the tick is honest, and a summary step now
-restates the outcome as a `::warning::` annotation on every run.
+**Audit job is `continue-on-error`.** RESOLVED at `d9b76f0`.
+`.github/workflows/test.yml` used to run `pnpm audit --audit-level=high` with
+`continue-on-error: true`, so the job could never fail the pipeline and a green
+tick meant only that the job had run. Three changes closed that:
+
+- The audit step runs **table mode**, not `--json`. `pnpm audit --json` in 9.15.0
+  does not apply `auditConfig.ignoreGhsas`, so the ignore list had no effect on
+  the exit code; table mode honours it.
+- `continue-on-error: true` was **removed**, so the job gates for real.
+- The summary step now fires **only on failure**. A clean audit emits no
+  annotation; the accepted-advisory tally lives on the run page as the `Severity:`
+  line in the step log.
+
+Proven real, not vacuous: removing one GHSA from the ignore list flips the exit
+code to 1, which is what makes the gate worth having.
 
 Measured 2026-10-03 on `pnpm-lock.yaml` (pnpm 9.15.0), reproducing CI exactly:
 
@@ -851,3 +860,46 @@ case. Options: regenerate deviceId from a stable platform identifier
 survive uninstall), or accept that reinstall = fresh start, and document
 it. Do not fix yet — this is a known limit of the current design, not a
 regression.
+
+## XP persistence — still lost on restart
+
+**Status: open.** Not a v1.1 launch blocker by the review's Q1, which was `dbId`
+and `XPBar` -- both fixed in `e7665bd` and `d53a020`. This is the next item.
+
+Symptoms: `useAuthStore().addXP()` mutates `user.xp`, `level` and `streak` on
+the in-memory Zustand profile. The store's `partialize` omits `user` entirely, so
+none of it is written back to SecureStore, and nothing else persists it. Every XP
+award is therefore lost on cold start. The `users` table has `xp`, `level` and
+`xp_to_next_level` columns, but no production code writes them after onboarding.
+
+Note that `XPBar` now reads the live store, so the bar is correct *within* a
+session and resets across one. `User.addXP()` -- the model method that would write
+through SQLite -- exists and has zero production callers; it also needs a
+`database.write()` wrapper because `Model.update()` throws outside a writer.
+
+Fix is a genuine design decision, not a patch. Either:
+
+1. Include `user` in `partialize`, after deciding what is safe to persist
+   (it carries `dbId`, which must stay consistent with the row), or
+2. Write XP through `User.addXP()` inside `database.write()` and rehydrate it on
+   init, the same way `dbId` is re-derived.
+
+Option 2 keeps SQLite as the single source of truth and matches the rest of the
+data layer. Option 1 is less code and keeps the store authoritative, at the cost of
+two stores that can disagree. Do not pick this without a decision.
+
+## Branch protection — still unverified
+
+**Status: open, blocked on access.** The audit job's display name changed at
+`13559ee` (`audit` -> `audit (advisory)`), and the job id stayed `audit`. A
+required-check string in branch protection is keyed on the *display name*, so if it
+was configured before that rename it may still be waiting on a context that no
+longer exists -- in which case protection is either inert or silently blocking.
+
+This is unreadable without repository admin auth, so it has never been confirmed.
+The job id was deliberately preserved when the name changed, so `needs:` references
+and id-keyed config keep resolving; it is only the name-keyed required check that
+is at risk.
+
+Verify once someone has access: confirm the required status checks list a context
+that exists, and that a deliberately failing run is actually blocked.

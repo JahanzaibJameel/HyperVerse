@@ -113,13 +113,23 @@ decorators. Where behaviour is domain logic rather than plain data, the model ca
 
 | Model | Behaviour |
 | :-- | :-- |
-| `User` | `addXP()` (multi-level), `updateStreak()` |
+| `User` | `addXP()` (multi-level), `updateStreak()` — see note below; neither has a production caller |
 | `Task` | `complete()`, `updateStatus()`, `updatePriority()`, `addTag()`, `removeTag()`, `parsedTags`, `isOverdue` |
 | `Habit` / `HabitEntry` | Streak tracking, `habit_entries` via `@children` |
 | `Note` / `Event` / `Transaction` / `FinancialGoal` | Status transitions, date helpers |
 | `AIMessage` / `Achievement` / `Setting` | Chat history, unlock records, key/value config |
 
 </details>
+
+> [!NOTE]
+> **XP does not currently flow through the `User` model.** The live write path is
+> `useAuthStore().addXP()`, which mutates `user.xp` / `level` / `streak` on the in-memory
+> Zustand profile. `User.addXP()` exists and is exercised only by tests — it has no
+> production caller. Because the Zustand `partialize` omits `user`, nothing writes those
+> values back to SecureStore, so **every XP award is lost on cold start**. Tracked as an
+> open item in `docs/followups.md`; not a v1.1 launch blocker. Fixing it means either
+> including `user` in `partialize` (after deciding what is safe to persist) or writing XP
+> through the model inside `database.write()` and rehydrating on init.
 
 > [!WARNING]
 > Two rules govern every model, and violating either throws at runtime:
@@ -161,7 +171,9 @@ table, and the previous files called a `migration` API that does not exist in Wa
 | `lib/logger.ts` | Levelled logger; optional `sentry-expo` behind a DSN check |
 
 `AuthService` is a singleton (`AuthService.getInstance()`) and is the only service the screens
-call, from `app/(auth)/setup.tsx`.
+call. Production call sites are `app/(auth)/setup.tsx`, `app/(auth)/unlock.tsx`,
+`app/(tabs)/settings.tsx`, and `components/auth/useAppUnlock.ts` — the last of which runs on
+every cold start, rehydrating the profile and re-deriving `dbId` before the router mounts.
 
 `lib/logger.ts` requires `sentry-expo` inside a `try/catch` and initialises it only if
 `EXPO_PUBLIC_SENTRY_DSN` is set. **Crash reporting is off by default and untested against a
