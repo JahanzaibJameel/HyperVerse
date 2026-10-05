@@ -70,7 +70,15 @@ profile back to the keychain:
 WatermelonDB assigns random ids per row. A `dbId` persisted by one install does not match a
 database restored or reinstalled under another, and `deviceId` is regenerated on fresh
 install — so there is no re-derivation path for that case. Tracked in `docs/followups.md`
-under "Session integrity". Not a regression; a limit of the current design.
+under "Session integrity". Not a regression; a known limitation.
+
+Two options are open for deciding what to do about it:
+
+- Derive `deviceId` from a stable platform identifier. iOS Keychain values survive
+  reinstall; Android Keystore values do not survive uninstall, so this is partial and
+  needs its own decision.
+- Accept that reinstall means a fresh start, and make it visible to the user (copy on the
+  setup screen), so the empty state is understood rather than discovered.
 
 ## Links
 
