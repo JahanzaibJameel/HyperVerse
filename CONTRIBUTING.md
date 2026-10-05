@@ -2,19 +2,19 @@
 title: Contributing
 description: How to set up, verify, and propose changes to HyperVerse, with commands that actually work.
 status: pre-release
-last_verified: 2026-09-29
+last_verified: 2026-10-05
 audience: contributor
 ---
 
 # Contributing
 
-**`pre-release`** · verified `2026-09-29` · ~7 min read
+**`pre-release`** · verified `2026-10-05` · ~7 min read
 
 > [!NOTE]
 > This document previously required "85%+ coverage", described Husky pre-commit hooks, and
 > told contributors to run `pnpm lint:fix`. None of those exist: there is no `.husky/`
 > directory and no Prettier config. Since then `lint:fix` has been added, coverage has risen to
-> 37.4%, and CI enforces typecheck and lint. The requirements below are ones the repository can
+> 40.52% of statements, and CI enforces typecheck and lint. The requirements below are ones the repository can
 > actually enforce.
 
 ## Contents
@@ -69,7 +69,7 @@ Or individually:
 ```bash
 npm run typecheck   # must report 0 errors
 npm run lint        # must report 0 errors, 0 warnings
-npm test            # must report 192 passed / 192 total
+npm test            # must report 219 passed / 219 total
 ```
 
 > [!NOTE]

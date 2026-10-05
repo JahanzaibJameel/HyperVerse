@@ -2,13 +2,13 @@
 title: Technical Debt Register
 description: Known structural problems in HyperVerse, why they matter, and what fixing them would involve.
 status: pre-release
-last_verified: 2026-09-29
+last_verified: 2026-10-05
 audience: maintainer
 ---
 
 # Technical Debt Register
 
-**`pre-release`** · verified `2026-09-29` · ~8 min read
+**`pre-release`** · verified `2026-10-05` · ~8 min read
 
 > [!NOTE]
 > This file was previously a second copy of the roadmap with aspirational release dates. It is
@@ -151,7 +151,7 @@ None of these break normal use, which is why the test suite did not catch them. 
 
 ## 4. Testing
 
-### 4.1 37.4% statement coverage
+### 4.1 40.52% statement coverage
 
 Measured over `lib/`, `components/`, and `hooks/`. `app/` is still excluded from the
 `collectCoverageFrom` globs, so the true figure is lower.

@@ -2,18 +2,18 @@
 title: Testing
 description: How HyperVerse's test suite is configured, what it covers, and how to add tests.
 status: pre-release
-last_verified: 2026-09-29
+last_verified: 2026-10-05
 audience: contributor
 ---
 
 # Testing
 
-**`pre-release`** · verified `2026-09-29` · ~7 min read
+**`pre-release`** · verified `2026-10-05` · ~7 min read
 
 > [!NOTE]
 > This guide is referenced from the [README](../README.md) but did not exist before. The
 > previous README claimed "85%+ coverage" and documented a `__tests__/__mocks__/` directory
-> that does not exist. Measured coverage is **37.4%** of statements.
+> that does not exist. Measured coverage is **40.52%** of statements.
 
 ## Contents
 
@@ -36,7 +36,7 @@ Measured 2026-09-29.
 | :-- | :-- |
 | Suites | 11 passing, 0 failing |
 | Tests | 192 passing, 0 failing |
-| Statements | 37.4% |
+| Statements | 40.52% |
 | Branches | 34.45% |
 | Functions | 31.38% |
 | Lines | 37.35% |
@@ -55,7 +55,7 @@ Measured 2026-09-29.
 
 > [!WARNING]
 > `app/` is still **not** in the coverage globs, so the headline figure excludes all screen
-> code. The true number including screens is lower than 37.4%. The most-tested code in the
+> code. The true number including screens is lower than 40.52%. The most-tested code in the
 > project is the repository layer — which is the right place to start, but it is not the same
 > as testing that the screens work.
 

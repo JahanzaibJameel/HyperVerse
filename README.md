@@ -255,21 +255,21 @@ All workflows run on pushes and pull requests to `main`, except `release.yml`, w
 
 | Workflow | Runs |
 | :-- | :-- |
-| `test.yml` | `pnpm install`, `typecheck`, `lint`, `test`, `test:coverage` |
+| `test.yml` | `pnpm install`, `typecheck`, `lint`, `expo export --platform web`, `test`, `test:coverage` |
 | `test.yml` (`audit (advisory)`) | `pnpm audit --audit-level=high` in table mode. Gates the pipeline; 44 measured GHSAs are listed in `package.json` under `pnpm.auditConfig.ignoreGhsas` |
 | `Web Export (advisory)` (`build.yml`) | Web export only. Advisory, and **does not deploy** — it is a no-op while `EXPO_TOKEN` is unset |
 | `release.yml` | Tag-triggered release |
 
 > [!NOTE]
-> Typecheck and lint are now enforced on pull requests, and `lint` is check-only so a
-> regression fails CI instead of being silently auto-fixed. The advisory `pnpm audit` job
-> reports high-severity advisories without blocking unrelated fixes.
-> `.github/dependabot.yml` and the issue/PR templates are present.
+> Typecheck, lint, the test suite, the coverage floor, a web bundle export and a dependency
+> audit are all enforced on pull requests. `lint` is check-only, so a regression fails CI
+> instead of being silently auto-fixed. `.github/dependabot.yml` and the issue/PR templates
+> are present.
 
 ---
 
-**Status** `pre-release` · **verified** `2026-09-29` · [Architecture](ARCHITECTURE.md) ·
-[Structure](PROJECT_STRUCTURE.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md) ·
+**Status** `pre-release` · **verified** `2026-10-05` · [Architecture](ARCHITECTURE.md) ·
+[Structure](PROJECT_STRUCTURE.md) · [Roadmap](ROADMAP_V2.md) · [Decisions](docs/adr/README.md) · [Contributing](CONTRIBUTING.md) ·
 [Security](SECURITY.md)
 
 [Edit this page](https://github.com/JahanzaibJameel/HyperVerse/blob/main/README.md) ·

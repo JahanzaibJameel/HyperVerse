@@ -10,6 +10,11 @@ audience: maintainer
 
 **`reference`** · verified `2026-09-29` · ~6 min read
 
+> [!WARNING]
+> **Historical.** A point-in-time summary of a single polish pass, kept for
+> provenance rather than as a status document. Several items it describes as outstanding were
+> subsequently fixed or superseded. See `docs/followups.md` and `docs/adr/` for the live record.
+
 > [!IMPORTANT]
 > The previous version of this file was titled "HyperVerse Final Polish Summary (8.5 → 10/10)"
 > and claimed the project had reached "a perfect 10/10 production score" with "enterprise-level

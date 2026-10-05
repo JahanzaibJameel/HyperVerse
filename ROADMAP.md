@@ -10,12 +10,17 @@ audience: all
 
 **`pre-release`** · verified `2026-09-29` · ~4 min read
 
+> [!WARNING]
+> **Partly superseded.** `ROADMAP_V2.md` and `docs/followups.md` are the actively
+> maintained records; where they disagree with this file, prefer those. Coverage figures here
+> were refreshed 2026-10-05, but item status was last audited 2026-09-29.
+
 Ordered by how much each item blocks real use, not by date. No dates are attached because none
 are committed to.
 
 > [!IMPORTANT]
 > Stages 0, 1, and 2 are complete. The app now persists real data in SQLite, CI enforces
-> typecheck and lint, and lint is clean at 0 errors and 0 warnings. Measured coverage is 37.4%
+> typecheck and lint, and lint is clean at 0 errors and 0 warnings. Measured coverage is 40.52%
 > of statements. Stage 3 is partially done: the AI answers grounded questions through a local
 > engine, but no on-device model files ship with the app.
 
@@ -106,7 +111,7 @@ Open:
 
 ## Stage 4 — Ship
 
-- [ ] Raise coverage above 37.4%. `lib/ai/models`, `lib/ai/rag`, `components/ui`, and
+- [x] Raise coverage above 37.4% — now 40.52% (floors 38/34/33/38). `lib/ai/models`, `lib/ai/rag`, `components/ui`, and
       `lib/stores` are at or near 0%, and `app/` is excluded from the coverage globs entirely
 - [ ] Test the v1→v2 migration against a real SQLite file. Tests use the LokiJS adapter, which
       builds a fresh schema, so the `DROP COLUMN` SQL has never executed

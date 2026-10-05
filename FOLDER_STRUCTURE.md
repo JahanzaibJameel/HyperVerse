@@ -2,13 +2,13 @@
 title: File Inventory
 description: Every source file in HyperVerse with its purpose and implementation state.
 status: pre-release
-last_verified: 2026-09-29
+last_verified: 2026-10-05
 audience: contributor
 ---
 
 # File Inventory
 
-**`pre-release`** · verified `2026-09-29` · ~7 min read
+**`pre-release`** · verified `2026-10-05` · ~7 min read
 
 A file-by-file reference. For the directory-level view, see
 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md).
@@ -85,7 +85,7 @@ anywhere.
 | `schema.ts` | 183 | 12 tables, version 1 | Real |
 | `database.ts` | 97 | `SQLiteAdapter` (`jsi: true`), `Database` singleton, readiness helpers, typed `database.get<T>()` | Real |
 | `index.ts` | 8 | Barrel | Real |
-| `models/User.ts` | 92 | `addXP` (multi-level loop), `updateStreak` | Real |
+| `models/User.ts` | 104 | `addXP` (multi-level loop), `updateStreak` | Real code, **no production callers** — XP goes through `useAuthStore().addXP()` |
 | `models/Task.ts` | 77 | `complete`, `updateStatus`, `updatePriority`, `addTag`, `removeTag`, `parsedTags`, `isOverdue` | Real |
 | `models/Habit.ts` | 69 | Streak logic, `habitEntries` relation | Real |
 | `models/HabitEntry.ts` | 29 | Entry record | Real |

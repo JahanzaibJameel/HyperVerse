@@ -49,11 +49,18 @@ Models include business logic methods:
 - `addTag()` / `removeTag()` - Tag management
 
 #### User Model
-- `progressToNextLevel` - Calculate level progress
-- `remainingXP` - Calculate XP needed for next level
-- `addXP()` - Add experience points with level up logic
-- `updateStreak()` - Update user streak
-- `updateProfile()` - Update user profile data
+> [!WARNING]
+> Every method below is implemented but has **zero production callers**. XP, streaks and
+> profile edits currently go through `lib/stores/authStore.ts` and `AuthService`, which
+> mutate the in-memory profile and never write to this row. `addXP()` additionally calls
+> bare `this.update()`, which throws unless wrapped in `database.write()`. See the "XP
+> persistence" entry in `docs/followups.md`.
+
+- `progressToNextLevel` - Calculate level progress (getter, uncalled)
+- `remainingXP` - Calculate XP needed for next level (getter, uncalled)
+- `addXP()` - Add experience points with level up logic (uncalled; needs a writer block)
+- `updateStreak()` - Update user streak (uncalled)
+- `updateProfile()` - Update user profile data (uncalled)
 
 ## Future Enhancements
 

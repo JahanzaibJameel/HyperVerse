@@ -10,6 +10,12 @@ audience: all
 
 **`reference`** · verified `2026-09-29` · ~5 min read
 
+> [!WARNING]
+> **Historical.** A point-in-time engineering write-up from the SDK 54 alignment
+> period, kept for provenance. It describes that work, not the current tree: the launch-gate,
+> `dbId` rehydration and audit-gate items it references have since been fixed or superseded.
+> See `docs/followups.md` and `docs/adr/` for the live record.
+
 > [!NOTE]
 > The previous version of this file was a launch announcement — "Building a 100% Offline
 > AI-Native Life OS in 2026" — describing a shipped product. It included code samples for an

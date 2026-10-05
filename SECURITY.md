@@ -2,13 +2,13 @@
 title: Security Policy
 description: What HyperVerse does to protect data, what it does not, and how to report a vulnerability.
 status: pre-release
-last_verified: 2026-09-29
+last_verified: 2026-10-05
 audience: all
 ---
 
 # Security Policy
 
-**`pre-release`** · verified `2026-09-29` · ~6 min read
+**`pre-release`** · verified `2026-10-05` · ~6 min read
 
 > [!IMPORTANT]
 > This document previously claimed an "A+ security rating", "GDPR, CCPA compliant", "zero known
@@ -128,9 +128,15 @@ file the app ignores is a liability, not a convenience.
 - **No data export encryption.** `exportUserData()` returns plaintext JSON.
 - **No `android:allowBackup="false"`** in a committed manifest, because no `android/` directory
   is committed. This matters: on Android, app data may be included in cloud backups.
-- **The advisory audit does not gate merges.** `pnpm audit` runs in CI with
-  `continue-on-error: true`, so a high-severity advisory is reported but cannot block an
-  unrelated fix.
+- **The advisory audit now gates merges.** As of `d9b76f0` the audit job runs without
+  `continue-on-error`, so a high or critical advisory outside the ignore list fails the
+  pipeline. The gate is real rather than nominal: 44 GHSAs are listed in
+  `package.json` under `pnpm.auditConfig.ignoreGhsas`, each measured as either absent from
+  the shipped bundle on all three platforms or accepted in-bundle with a documented
+  rationale (`docs/followups.md`, "Accepted advisories (ignoreGhsas)"). The step runs
+  `pnpm audit` in table mode because `--json` in pnpm 9.15.0 does not apply the ignore
+  list to `.metadata.vulnerabilities` or to the exit code. A clean audit emits no
+  annotation; a failure emits a `::warning::` pointing back here.
 
 ## 4. Threat model
 
