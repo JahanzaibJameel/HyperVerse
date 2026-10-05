@@ -370,11 +370,23 @@ trades a cosmetic warning for real regression risk. Tracked in
 
 ## Outstanding manual verification
 
-**Step 6 (cold-start manual verification) is OUTSTANDING.** No emulator or
-device was reachable from the build environment (`adb` not on PATH; no iOS
-simulator on Windows), so nothing below has been executed. The automated suite
-mocks `expo-local-authentication` and `expo-secure-store` and therefore proves
-neither the real biometric prompt nor the real keychain round-trip.
+**Step 6 (cold-start verification) now requires a three-case pass.** With ADR-0005
+(`e7665bd`, "fix(auth): re-derive dbId on cold start so domain data survives restart"),
+the check is not removed but changed: what the manual pass looks for depends on what the
+stored profile carries. The manual pass on a real device must verify all three cases:
+
+1. Cold start with a stored profile that carries `dbId` (normal path). Expect: biometric
+   prompt, then dashboard with the user's data.
+2. Cold start with a stored profile that has no `dbId` but a `users` row exists for
+   `deviceId` (repair path — the e7665bd fix). Expect: biometric prompt, `resolveDbId`
+   re-derives, dashboard shows data. This path has a unit test but has never run against a
+   real SecureStore + SQLite.
+3. Cold start with no matching `users` row (fresh install or restored DB). Expect:
+   dashboard is empty. This is the limitation, not a design choice — see 2b.
+
+Nothing below has otherwise been executed on a real device or simulator: the automated suite
+mocks `expo-local-authentication` and `expo-secure-store` and therefore proves neither the
+real biometric prompt nor the real keychain round-trip.
 
 Run on a simulator or device:
 
@@ -389,7 +401,11 @@ Run on a simulator or device:
    am force-stop <package>`) — do not merely background it.
 5. Relaunch. The unlock prompt MUST appear before `(tabs)`. Cancel it and
    confirm you stay locked out with a retry button and no path into the tabs.
-6. Pass the prompt and confirm `(tabs)` renders.
+6. Pass the prompt and confirm `(tabs)` renders with data present (case 1: profile
+    carries `dbId`). For case 2 — no `dbId` but a `users` row exists for deviceId, the
+    e7665bd repair path — wipe SecureStore and relaunch: expect the biometric prompt,
+    `resolveDbId` re-derivation, and data present. Case 3 (fresh install or restored DB
+    with no matching row) must yield an empty dashboard.
 7. Add a temporary `console.log` inside `partialize` in `lib/stores/authStore.ts`,
    log the emitted payload, and confirm `isAuthenticated` is **absent** while
    `hasAccount` / `userId` / `deviceId` / `lastAuthTimestamp` are present.
