@@ -3,24 +3,41 @@ import { View } from 'react-native';
 import type { Meta, StoryObj } from '@storybook/react';
 
 import { XPBar } from '@/components/XPBar';
-import { AppContext } from '@/context/AppContext';
+import { useAuthStore } from '@/lib/stores/authStore';
+import type { UserProfile } from '@/lib/services/AuthService';
 
 /**
- * XPBar reads `user` from context. AppProvider's default user is fixed, so to
- * show different fill levels we provide a custom value through the same
- * context the component reads from.
+ * XPBar reads level and XP from `useAuthStore`, the same store the screens
+ * award XP through. Each story seeds that store rather than providing a value
+ * through a separate context, so the stories exercise the real data path.
  */
-function UserProvider({ user, children }: { user: any; children: React.ReactNode }) {
-  const value = {
-    user,
-    health: { steps: 0, stepsGoal: 0, calories: 0, sleep: 0, heartRate: 0, workouts: 0 },
-    finance: { balance: 0, income: 0, expenses: 0, savings: 0, investments: 0, budgetUsed: 0 },
-    aiMessages: [],
-    addXP: () => {},
-    addMessage: () => {},
-    clearMessages: () => {},
+const BASE: UserProfile = {
+  id: 'story_user',
+  dbId: 'story_row',
+  deviceId: 'story_device',
+  name: 'Runner',
+  email: null,
+  avatarUrl: null,
+  level: 1,
+  xp: 0,
+  xpToNextLevel: 1000,
+  streak: 0,
+  tokens: 0,
+  nfts: 0,
+  isActive: true,
+  createdAt: 0,
+  updatedAt: 0,
+};
+
+/**
+ * Seeded in a decorator rather than in `render`, so the store write happens
+ * outside the render pass instead of as a side effect of rendering a component.
+ */
+function withUser(user: Partial<UserProfile>) {
+  return (Story: () => React.JSX.Element) => {
+    useAuthStore.setState({ user: { ...BASE, ...user } });
+    return <Story />;
   };
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
 const meta = {
@@ -41,57 +58,39 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  render: () => (
-    <UserProvider user={{ name: 'Neural Runner', level: 7, xp: 3240, xpToNextLevel: 5000, streak: 12, tokens: 2847, nfts: 6 }}>
-      <XPBar />
-    </UserProvider>
-  ),
+  decorators: [withUser({ name: 'Neural Runner', level: 7, xp: 3240, xpToNextLevel: 5000, streak: 12, tokens: 2847, nfts: 6 })],
 };
 
 export const Low: Story = {
-  render: () => (
-    <UserProvider user={{ name: 'New Runner', level: 1, xp: 120, xpToNextLevel: 1000, streak: 0, tokens: 0, nfts: 0 }}>
-      <XPBar />
-    </UserProvider>
-  ),
+  decorators: [withUser({ name: 'New Runner', level: 1, xp: 120, xpToNextLevel: 1000 })],
 };
 
 export const NearMax: Story = {
-  render: () => (
-    <UserProvider user={{ name: 'Veteran', level: 42, xp: 4999, xpToNextLevel: 5000, streak: 100, tokens: 99999, nfts: 1337 }}>
-      <XPBar />
-    </UserProvider>
-  ),
+  decorators: [withUser({ name: 'Veteran', level: 42, xp: 4999, xpToNextLevel: 5000, streak: 100, tokens: 99999, nfts: 1337 })],
 };
 
 export const MaxedOut: Story = {
-  render: () => (
-    <UserProvider user={{ name: 'Legend', level: 99, xp: 5000, xpToNextLevel: 5000, streak: 365, tokens: 1 << 30, nfts: 500 }}>
-      <XPBar />
-    </UserProvider>
-  ),
+  decorators: [withUser({ name: 'Legend', level: 99, xp: 5000, xpToNextLevel: 5000, streak: 365, tokens: 1 << 30, nfts: 500 })],
 };
 
 export const ZeroXP: Story = {
-  render: () => (
-    <UserProvider user={{ name: 'Fresh', level: 1, xp: 0, xpToNextLevel: 1000, streak: 0, tokens: 0, nfts: 0 }}>
-      <XPBar />
-    </UserProvider>
-  ),
+  decorators: [withUser({ name: 'Fresh', level: 1, xp: 0, xpToNextLevel: 1000 })],
+};
+
+export const NoProfile: Story = {
+  decorators: [
+    (Story: () => React.JSX.Element) => {
+      // No profile yet: the bar has to render level 1 at 0 XP rather than
+      // standing in a fabricated figure.
+      useAuthStore.setState({ user: null });
+      return <Story />;
+    },
+  ],
 };
 
 export const Grid: Story = {
-  render: () => (
-    <View style={{ gap: 10 }}>
-      <UserProvider user={{ name: 'Fresh', level: 1, xp: 0, xpToNextLevel: 1000, streak: 0, tokens: 0, nfts: 0 }}>
-        <XPBar />
-      </UserProvider>
-      <UserProvider user={{ name: 'Runner', level: 7, xp: 3240, xpToNextLevel: 5000, streak: 12, tokens: 2847, nfts: 6 }}>
-        <XPBar />
-      </UserProvider>
-      <UserProvider user={{ name: 'Veteran', level: 42, xp: 4999, xpToNextLevel: 5000, streak: 100, tokens: 99999, nfts: 1337 }}>
-        <XPBar />
-      </UserProvider>
-    </View>
-  ),
+  render: () => <View style={{ gap: 10 }} />,
+  decorators: [
+    withUser({ name: 'Runner', level: 7, xp: 3240, xpToNextLevel: 5000, streak: 12, tokens: 2847, nfts: 6 }),
+  ],
 };

@@ -14,7 +14,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RootLayoutNavGate } from '@/components/auth/RootLayoutNavGate';
-import { AppProvider } from '@/context/AppContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -58,7 +57,6 @@ export default function RootLayout() {
       <ErrorBoundary>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <KeyboardProvider>
-            <AppProvider>
               {/*
                 Nothing renders until `authenticateForApp` has run. A stored
                 profile is not authorisation, so this gate must stay in front of
@@ -67,8 +65,7 @@ export default function RootLayout() {
               <RootLayoutNavGate>
                 <RootNavigator />
               </RootLayoutNavGate>
-            </AppProvider>
-          </KeyboardProvider>
+            </KeyboardProvider>
         </GestureHandlerRootView>
       </ErrorBoundary>
     </SafeAreaProvider>

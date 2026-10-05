@@ -105,11 +105,12 @@ factor, against the real model.
 
 ## 3. Duplication and drift
 
-### 3.1 Two `UserProfile` types
+### 3.1 Two `UserProfile` types — resolved
 
-`context/AppContext.tsx` and `lib/services/AuthService.ts` each declare a `UserProfile` with
-different fields. `context/` is imported by nothing. Delete `context/` and re-export the
-`AuthService` type from a single location.
+`context/AppContext.tsx` and `lib/services/AuthService.ts` each declared a `UserProfile` with
+different fields. `context/` was imported by nothing except `XPBar`, which read a fabricated
+seed from it rather than real state. `context/` is deleted and
+`lib/services/AuthService.ts` is now the single `UserProfile` definition.
 
 ### 3.2 Two tab layouts, one used
 

@@ -3,13 +3,21 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
-import { useApp } from "@/context/AppContext";
+import { useAuthStore } from "@/lib/stores/authStore";
 
 export function XPBar() {
   const colors = useColors();
-  const { user } = useApp();
+  // Screens award XP through `useAuthStore().addXP`, so this store is the only
+  // place the app's real level and XP live. The nullish fallbacks keep the bar
+  // honest before the unlock gate has rehydrated a profile — level 1, zero XP —
+  // rather than standing in a fabricated progress figure.
+  const { user } = useAuthStore();
+  const level = user?.level ?? 1;
+  const xp = user?.xp ?? 0;
+  const xpToNextLevel = user?.xpToNextLevel ?? 1000;
+
   const progress = useRef(new Animated.Value(0)).current;
-  const pct = user.xp / user.xpToNextLevel;
+  const pct = xp / xpToNextLevel;
 
   useEffect(() => {
     Animated.timing(progress, {
@@ -37,13 +45,13 @@ export function XPBar() {
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <Text style={[styles.level, { color: colors.cyan }]}>LVL {user.level}</Text>
-        <Text style={[styles.xp, { color: colors.mutedForeground }]}>
-          {user.xp.toLocaleString()} / {user.xpToNextLevel.toLocaleString()} XP
+        <Text testID="xp-bar-level" style={[styles.level, { color: colors.cyan }]}>LVL {level}</Text>
+        <Text testID="xp-bar-progress" style={[styles.xp, { color: colors.mutedForeground }]}>
+          {xp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP
         </Text>
       </View>
       <View style={[styles.track, { backgroundColor: colors.border }]}>
-        <Animated.View style={[styles.fillWrapper, { width: barWidth }]}>
+        <Animated.View testID="xp-bar-fill" style={[styles.fillWrapper, { width: barWidth }]}>
           <LinearGradient
             colors={[colors.cyan, colors.purple]}
             start={{ x: 0, y: 0 }}

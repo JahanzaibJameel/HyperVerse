@@ -38,7 +38,6 @@ HyperVerse/
 ├── components/           Reusable UI components
 ├── __tests__/            Jest + Detox specs
 ├── constants/            colors.ts
-├── context/              AppContext.tsx (legacy)
 ├── hooks/                useColors.ts
 ├── scripts/              build.js
 ├── server/               serve.js
@@ -141,7 +140,6 @@ There are no `charts/` or `forms/` subdirectories.
 | `__tests__/` | `unit/`, `integration/`, `components/`, `database/`, `e2e/` |
 | `constants/colors.ts` | Light and dark palettes consumed by `hooks/useColors.ts` |
 | `hooks/useColors.ts` | Returns the palette for the active colour scheme |
-| `context/AppContext.tsx` | Legacy. Declares a second `UserProfile` type predating `lib/services/AuthService`. Not imported by any screen. |
 | `scripts/build.js` | Static Expo Go build pipeline |
 | `server/serve.js` | Static file server for `static-build/` |
 | `assets/images/` | Icon and splash images. **No `ai-models/` directory exists.** |

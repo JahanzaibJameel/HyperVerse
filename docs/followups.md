@@ -837,3 +837,17 @@ occurrence, but the underlying entry-point sensitivity is unexplained.
 Instrument pnpm's resolution when there is time; the general class —
 "direct node invocation of a bin file resolves differently than through
 the .bin shim" — is worth understanding, because it can hide real bugs.
+## Session integrity — persisted dbId across reinstall or restore
+
+babel-preset-expo / dbId fix (e7665bd) persists the WatermelonDB row id
+into SecureStore so cold start can reattach domain data. WatermelonDB
+assigns random ids per row, so a dbId persisted by one install and a
+database restored or reinstalled under another will not match — the
+same "dbId points at a row that no longer exists" state e7665bd repairs
+on cold start, except findByDeviceId would also fail because deviceId
+is regenerated on fresh install. There is no re-derivation path for that
+case. Options: regenerate deviceId from a stable platform identifier
+(Keychain-stored on iOS survives reinstall; Android Keystore does not
+survive uninstall), or accept that reinstall = fresh start, and document
+it. Do not fix yet — this is a known limit of the current design, not a
+regression.

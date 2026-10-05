@@ -150,12 +150,12 @@ anywhere.
 | :-- | :-- | :-- |
 | `hooks/useColors.ts` | 12 lines. Returns the light or dark palette | Real, 100% covered |
 | `constants/colors.ts` | Light and dark palettes, `radius` | Real |
-| `context/AppContext.tsx` | Legacy provider declaring a second, incompatible `UserProfile` type | Unused |
 
-> [!WARNING]
-> `context/AppContext.tsx` and `lib/services/AuthService.ts` both define `UserProfile` with
-> different shapes. Consolidate on the `AuthService` one and delete `context/` before adding
-> more surfaces.
+> [!NOTE]
+> `context/AppContext.tsx` has been deleted. It declared a second, incompatible
+> `UserProfile` type and held a parallel state system whose only reader was
+> `XPBar`, which now reads `useAuthStore`. `lib/services/AuthService.ts` is the
+> single `UserProfile` definition.
 
 ## 6. Tests
 
