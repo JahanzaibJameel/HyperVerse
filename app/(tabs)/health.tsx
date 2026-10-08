@@ -23,12 +23,24 @@ import type { HealthMetric } from "@/lib/database/models/HealthMetric";
 
 const SLEEP_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+type AchievementIcon = keyof typeof MaterialCommunityIcons.glyphMap;
+type Achievement = {
+  name: string;
+  icon: AchievementIcon;
+  desc: string;
+  earned: boolean;
+  color: string;
+};
+
 /** Real achievements derived from user's health records */
-const ACHIEVEMENTS = (() => {
-  const items: { name: string; icon: string; desc: string; earned: boolean; color: string }[] = [];
+function computeAchievements(
+  metrics: HealthMetric[],
+  latest: HealthMetric | null,
+): Achievement[] {
+  const items: Achievement[] = [];
 
   // Calculate achievements based on real health data
-  if (latest?.steps >= 10000) {
+  if ((latest?.steps ?? 0) >= 10000) {
     items.push({
       name: "Speed Demon",
       icon: "speedometer",
@@ -50,7 +62,7 @@ const ACHIEVEMENTS = (() => {
   }
 
   // Check if workouts is >= 30 (monthly achievement, simplified to current workouts)
-  if (latest?.workouts >= 30) {
+  if ((latest?.workouts ?? 0) >= 30) {
     items.push({
       name: "Iron Will",
       icon: "dumbbell",
@@ -115,7 +127,7 @@ const ACHIEVEMENTS = (() => {
   }
 
   return items;
-})();
+}
 
 export default function HealthScreen() {
   const colors = useColors();
@@ -161,6 +173,8 @@ export default function HealthScreen() {
     workouts: latest?.workouts ?? 0,
   };
 
+  const achievements = computeAchievements(metrics, latest);
+
   // 7-day sleep series from real records, oldest first.
   const sleepSeries = (() => {
     if (metrics.length === 0) return [];
@@ -203,6 +217,8 @@ export default function HealthScreen() {
 
   const handleMeditation = async () => {
     if (loggedMeditation) return;
+    const dbId = user?.dbId;
+    if (!dbId) return;
 
     // Persist meditation to database
     try {
@@ -211,7 +227,7 @@ export default function HealthScreen() {
         await HealthRepository.updateWaterIntake(latest, (latest.waterIntake || 0) + 1);
       } else {
         // Create a new health metric for meditation
-        await HealthRepository.upsertToday(user.dbId, {
+        await HealthRepository.upsertToday(dbId, {
           steps: 0,
           stepsGoal: 10000,
           calories: 0,
@@ -432,11 +448,11 @@ export default function HealthScreen() {
           <MaterialCommunityIcons name="trophy" size={16} color={colors.warning} />
           <Text style={[styles.cardTitle, { color: colors.foreground }]}>ACHIEVEMENTS</Text>
           <Text style={[styles.cardSub, { color: colors.warning }]}>
-            {ACHIEVEMENTS.filter((a) => a.earned).length} / {ACHIEVEMENTS.length} earned
+            {achievements.filter((a) => a.earned).length} / {achievements.length} earned
           </Text>
         </View>
         <View style={styles.achieveGrid}>
-          {ACHIEVEMENTS.map((a, i) => (
+          {achievements.map((a, i) => (
             <View
               key={i}
               style={[
