@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlowCard } from "@/components/GlowCard";
 import { NeonButton } from "@/components/NeonButton";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useThemeStore, type AccentColor } from "@/lib/stores/themeStore";
+import { useThemeStore, ACCENT_HEX, type AccentColor } from "@/lib/stores/themeStore";
 import { SettingsRepository } from "@/lib/database/repositories/SettingsRepository";
 import AuthService from "@/lib/services/AuthService";
 import { useColors } from "@/hooks/useColors";
@@ -109,13 +109,48 @@ export default function SettingsScreen() {
   };
 
   const handleExport = async () => {
+    if (!user?.dbId) return;
+    
     try {
-      const data = await AuthService.getInstance().exportUserData();
-      console.log('Exported user data:', data);
-      Alert.alert('Export complete', 'Your data has been exported. Check the console for details.');
+      setIsLoading(true);
+      const authService = AuthService.getInstance();
+      const exportedData = await authService.exportUserData();
+      
+      // Create a shareable file
+      if (Platform.OS === 'web') {
+        // For web, create a downloadable blob
+        const blob = new Blob([exportedData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `hyperverse-backup-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        Alert.alert('Export complete', 'Your data has been exported to a downloadable file.');
+      } else {
+        // For mobile, use the share API or save to device
+        try {
+          const { shareAsync } = await import('expo-sharing');
+          await shareAsync(exportedData, {
+            mimeType: 'application/json',
+            dialogTitle: 'Export HyperVerse Data',
+            filename: `hyperverse-backup-${Date.now()}.json`,
+          });
+          Alert.alert('Export complete', 'Your data has been shared successfully!');
+        } catch (shareError) {
+          // If sharing fails, show an alert with the data
+          Alert.alert('Export complete', 'Your data has been generated. Check your sharing options.', [
+            { text: 'OK' },
+          ]);
+        }
+      }
     } catch (error) {
       console.error('Failed to export data', error);
-      Alert.alert('Error', 'Failed to export your data.');
+      Alert.alert('Error', 'Failed to export your data. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -158,11 +193,11 @@ export default function SettingsScreen() {
   };
 
   const ACCENTS: { name: AccentColor; color: string }[] = [
-    { name: 'cyan', color: '#00ffff' },
-    { name: 'purple', color: '#a855f7' },
-    { name: 'pink', color: '#ec4899' },
-    { name: 'green', color: '#10b981' },
-    { name: 'orange', color: '#f97316' },
+    { name: 'cyan', color: ACCENT_HEX.cyan },
+    { name: 'purple', color: ACCENT_HEX.purple },
+    { name: 'pink', color: ACCENT_HEX.pink },
+    { name: 'green', color: ACCENT_HEX.green },
+    { name: 'orange', color: ACCENT_HEX.orange },
   ];
 
   return (

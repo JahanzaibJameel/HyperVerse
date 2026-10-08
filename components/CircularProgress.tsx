@@ -26,11 +26,29 @@ export function CircularProgress({
   unit = "",
 }: CircularProgressProps) {
   const colors = useColors();
-  const pct = Math.min(value / max, 1);
+  
+  // Add safety guard for max <= 0 to prevent NaN
+  const safeMax = Math.max(max, 0.001);
+  const pct = max <= 0 ? 0 : Math.min(value / safeMax, 1);
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
   const progress = useRef(new Animated.Value(0)).current;
   const gradId = `grad_${label.replace(/\s/g, "")}`;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: pct,
+      duration: 1200,
+      useNativeDriver: false,
+    }).start();
+  }, [progress, pct]);
+
+  const strokeDashoffset = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0],
+  });
+
+  const displayVal = value >= 10000 ? `${(value / 1000).toFixed(1)}k` : value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
 
   useEffect(() => {
     Animated.timing(progress, {

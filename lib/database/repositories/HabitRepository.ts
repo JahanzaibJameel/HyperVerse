@@ -119,4 +119,29 @@ export const HabitRepository = {
       .fetch();
     return entries[0];
   },
+
+  /**
+   * Undo a completion: delete today's entry and decrement the streak.
+   *
+   * The entry row must be deleted, not just flipped to `completed: false`. If it
+   * is left in place the next tap finds it again and decrements the streak a
+   * second time — repeated taps drain the streak to zero with no way back.
+   */
+  async undoComplete(habit: Habit): Promise<Habit> {
+    const entryDate = startOfLocalDay();
+    const entries = await database
+      .get<HabitEntry>('habit_entries')
+      .query(Q.where('habit_id', habit.id), Q.where('date', entryDate))
+      .fetch();
+
+    return database.write(async () => {
+      for (const entry of entries) {
+        await entry.destroy();
+      }
+      await habit.update((h) => {
+        h.currentStreak = Math.max(0, h.currentStreak - 1);
+      });
+      return habit;
+    });
+  },
 };

@@ -10,7 +10,7 @@ import { Redirect } from "expo-router";
 
 import { useColors } from "@/hooks/useColors";
 import { useAuthStore } from "@/lib/stores/authStore";
-import { useThemeStore } from "@/lib/stores/themeStore";
+import { useThemeStore, ACCENT_HEX } from "@/lib/stores/themeStore";
 
 function NativeTabLayout() {
   const { user, isAuthenticated, isLoading } = useAuthStore();
@@ -73,21 +73,12 @@ function ClassicTabLayout() {
     return <Redirect href={user ? "/(auth)/unlock" : "/(auth)/setup"} />;
   }
 
-  const getAccentColor = (color: string): string => {
-    const accentPalette: Record<string, string> = {
-      cyan: '#00ffff',
-      purple: '#a855f7',
-      pink: '#ec4899',
-      green: '#10b981',
-      orange: '#f97316',
-    };
-    return accentPalette[color] || '#00ffff';
-  };
+  const activeColor = ACCENT_HEX[accentColor];
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: getAccentColor(accentColor),
+        tabBarActiveTintColor: activeColor,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
         tabBarStyle: {
@@ -102,7 +93,7 @@ function ClassicTabLayout() {
           isIOS ? (
             <BlurView
               intensity={80}
-              tint={isDark ? "dark" : "dark"}
+              tint={isDark ? "dark" : "light"}
               style={StyleSheet.absoluteFill}
             />
           ) : (

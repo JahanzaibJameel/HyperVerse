@@ -75,9 +75,7 @@ export default function HabitsScreen() {
     try {
       const existing = await HabitRepository.findTodaysEntry(habit.id);
       if (existing) {
-        await HabitRepository.update(habit, (h) => {
-          h.currentStreak = Math.max(0, h.currentStreak - 1);
-        });
+        await HabitRepository.undoComplete(habit);
         Alert.alert('Undo', `"${habit.title}" marked incomplete for today.`);
       } else {
         await HabitRepository.complete(habit);

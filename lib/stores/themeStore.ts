@@ -5,6 +5,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type AccentColor = 'cyan' | 'purple' | 'pink' | 'green' | 'orange';
 
+/** Single source of truth for accent hex values. Keep in sync with
+ * `colors.accents` in `@/constants/colors`. */
+export const ACCENT_HEX: Record<AccentColor, string> = {
+  cyan: '#00d4ff',
+  purple: '#7c3aed',
+  pink: '#ff006e',
+  green: '#00ff9d',
+  orange: '#ff6b00',
+};
+
+export const ACCENT_ORDER: AccentColor[] = ['cyan', 'purple', 'pink', 'green', 'orange'];
+
 interface ThemeState {
   themeMode: ThemeMode;
   accentColor: AccentColor;
@@ -16,8 +28,6 @@ interface ThemeState {
   toggleTheme: () => void;
   cycleAccentColor: () => void;
 }
-
-const accentColors: AccentColor[] = ['cyan', 'purple', 'pink', 'green', 'orange'];
 
 export const useThemeStore = create<ThemeState>()(
   persist(
@@ -51,9 +61,9 @@ export const useThemeStore = create<ThemeState>()(
 
       cycleAccentColor: () => {
         const { accentColor } = get();
-        const currentIndex = accentColors.indexOf(accentColor);
-        const nextIndex = (currentIndex + 1) % accentColors.length;
-        set({ accentColor: accentColors[nextIndex] });
+        const currentIndex = ACCENT_ORDER.indexOf(accentColor);
+        const nextIndex = (currentIndex + 1) % ACCENT_ORDER.length;
+        set({ accentColor: ACCENT_ORDER[nextIndex] });
       },
     }),
     {

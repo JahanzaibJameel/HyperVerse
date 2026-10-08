@@ -13,12 +13,11 @@ interface TickerItem {
 }
 
 const TICKERS: TickerItem[] = [
-  { label: "HV Token", value: "2,847", change: "+4.2%", positive: true, icon: "hexagon-outline" },
-  { label: "BTC", value: "$94,210", change: "+1.8%", positive: true, icon: "bitcoin" },
-  { label: "ETH", value: "$3,840", change: "-0.5%", positive: false, icon: "ethereum" },
   { label: "XP Today", value: "+380", change: "streak 12d", positive: true, icon: "lightning-bolt" },
-  { label: "AQI", value: "18", change: "Excellent", positive: true, icon: "air-filter" },
-  { label: "Steps", value: "8,432", change: "84%", positive: true, icon: "shoe-sneaker" },
+  { label: "Steps Today", value: "8,432", change: "+12%", positive: true, icon: "shoe-sneaker" },
+  { label: "Hydration", value: "6/8 cups", change: "On track", positive: true, icon: "water-outline" },
+  { label: "Savings", value: "$1,240", change: "+8%", positive: true, icon: "piggy-bank-outline" },
+  { label: "AI Assistant", value: "12 chats", change: "New insights", positive: true, icon: "brain" },
 ];
 
 export function LiveTicker() {

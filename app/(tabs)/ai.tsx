@@ -47,6 +47,7 @@ export default function AIScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const [tab, setTab] = useState<"chat" | "memory" | "twin">("chat");
   const [voiceActive, setVoiceActive] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [contextStats, setContextStats] = useState({
     healthRecords: 0,
     transactions: 0,
@@ -248,14 +249,43 @@ export default function AIScreen() {
     }
   };
 
-  const handleVoice = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setVoiceActive((v) => !v);
-    if (!voiceActive) {
-      setTimeout(() => {
+  const handleVoice = async () => {
+    if (isRecording) return;
+
+    setIsRecording(true);
+    setVoiceActive(true);
+
+    try {
+      // Check if speech recognition is available
+      const SpeechRecognition = require('react-native-speech-recognition');
+      const isAvailable = await SpeechRecognition.isAvailable();
+
+      if (!isAvailable) {
         setVoiceActive(false);
-        sendMessage("Optimize my morning routine");
-      }, 2500);
+        setIsRecording(false);
+        return;
+      }
+
+      const result = await SpeechRecognition.start(
+        'en-US',
+        {
+          language: 'en-US',
+          prompts: false,
+          continuous: false,
+          interimResults: true,
+        }
+      );
+
+      setIsRecording(false);
+      setVoiceActive(false);
+      
+      if (result && result.text.trim()) {
+        sendMessage(result.text.trim());
+      }
+    } catch (error) {
+      console.error('Voice input failed:', error);
+      setIsRecording(false);
+      setVoiceActive(false);
     }
   };
 
