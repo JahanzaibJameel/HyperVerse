@@ -35,22 +35,7 @@ export function CircularProgress({
   const progress = useRef(new Animated.Value(0)).current;
   const gradId = `grad_${label.replace(/\s/g, "")}`;
 
-  useEffect(() => {
-    Animated.timing(progress, {
-      toValue: pct,
-      duration: 1200,
-      useNativeDriver: false,
-    }).start();
-  }, [progress, pct]);
-
-  const strokeDashoffset = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [circumference, 0],
-  });
-
-  const displayVal = value >= 10000 ? `${(value / 1000).toFixed(1)}k` : value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
-
-  useEffect(() => {
+useEffect(() => {
     Animated.timing(progress, {
       toValue: pct,
       duration: 1200,
