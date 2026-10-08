@@ -95,6 +95,7 @@
     "expo-local-authentication": "~17.0.9",
     "expo-router": "~6.0.24",
     "expo-secure-store": "~15.0.8",
+    "expo-sharing": "^57.0.22",
     "expo-splash-screen": "~31.0.13",
     "expo-sqlite": "~16.0.10",
     "expo-status-bar": "~3.0.9",
