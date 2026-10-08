@@ -136,7 +136,7 @@ export const HabitRepository = {
 
     return database.write(async () => {
       for (const entry of entries) {
-        await entry.destroy();
+        await entry.destroyPermanently();
       }
       await habit.update((h) => {
         h.currentStreak = Math.max(0, h.currentStreak - 1);
