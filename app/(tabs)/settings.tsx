@@ -139,7 +139,7 @@ export default function SettingsScreen() {
             filename: `hyperverse-backup-${Date.now()}.json`,
           });
           Alert.alert('Export complete', 'Your data has been shared successfully!');
-        } catch (shareError) {
+        } catch {
           // If sharing fails, show an alert with the data
           Alert.alert('Export complete', 'Your data has been generated. Check your sharing options.', [
             { text: 'OK' },
