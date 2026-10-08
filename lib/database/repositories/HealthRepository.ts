@@ -87,4 +87,11 @@ export const HealthRepository = {
       return metric;
     });
   },
+
+  async updateWaterIntake(metric: HealthMetric, amount: number): Promise<HealthMetric> {
+    return database.write(async () => {
+      await metric.updateWaterIntake(amount);
+      return metric;
+    });
+  }
 };
