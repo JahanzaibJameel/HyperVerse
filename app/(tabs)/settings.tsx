@@ -132,11 +132,18 @@ export default function SettingsScreen() {
       } else {
         // For mobile, use the share API or save to device
         try {
+          const FileSystem = await import('expo-file-system/legacy');
+          const filename = `hyperverse-backup-${Date.now()}.json`;
+          const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+          await FileSystem.writeAsStringAsync(fileUri, exportedData, {
+            encoding: 'utf8',
+          });
+
           const { shareAsync } = await import('expo-sharing');
-          await shareAsync(exportedData, {
+          await shareAsync(fileUri, {
             mimeType: 'application/json',
             dialogTitle: 'Export HyperVerse Data',
-            filename: `hyperverse-backup-${Date.now()}.json`,
+            UTI: 'public.json',
           });
           Alert.alert('Export complete', 'Your data has been shared successfully!');
         } catch {

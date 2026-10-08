@@ -24,7 +24,6 @@ import type { Transaction } from "@/lib/database/models/Transaction";
 import type { FinancialGoal } from "@/lib/database/models/FinancialGoal";
 
 // Categories available for financial goals
-type Category = 'savings' | 'investment';
 
 const EMPTY_SUMMARY = {
   balance: 0,
@@ -120,47 +119,18 @@ export default function FinanceScreen() {
 
   const hasChartData = spendingData.some((v) => v > 0) || incomeData.some((v) => v > 0);
 
-  const [customGoal, setCustomGoal] = useState(false);
-  const [goalTitle, setGoalTitle] = useState('');
-  const [goalTarget, setGoalTarget] = useState('');
-  const [goalCategory, setGoalCategory] = useState<Category>('savings');
-
   const handleAddGoal = async () => {
     if (savedGoal || !user?.dbId) return;
-    
-    // If custom goal is enabled, use the custom values
-    if (customGoal) {
-      if (!goalTitle.trim() || !goalTarget.trim()) {
-        Alert.alert('Error', 'Please provide both a title and target amount for the goal');
-        return;
-      }
-      
-      const targetAmount = parseFloat(goalTarget);
-      if (isNaN(targetAmount) || targetAmount <= 0) {
-        Alert.alert('Error', 'Please enter a valid target amount');
-        return;
-      }
-    }
 
     try {
-      if (customGoal) {
-        await FinanceRepository.createGoal({
-          userId: user.dbId,
-          title: goalTitle.trim(),
-          targetAmount: parseFloat(goalTarget),
-          currentAmount: 0,
-          category: goalCategory,
-        });
-      } else {
-        await FinanceRepository.createGoal({
-          userId: user.dbId,
-          title: 'New Savings Goal',
-          targetAmount: 1000,
-          currentAmount: 0,
-          category: 'savings',
-        });
-      }
-      
+      await FinanceRepository.createGoal({
+        userId: user.dbId,
+        title: 'New Savings Goal',
+        targetAmount: 1000,
+        currentAmount: 0,
+        category: 'savings',
+      });
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       addXP(50);
       setSavedGoal(true);
