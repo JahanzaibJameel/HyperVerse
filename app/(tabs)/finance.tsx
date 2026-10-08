@@ -9,6 +9,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +22,9 @@ import { FinanceRepository } from "@/lib/database/repositories/FinanceRepository
 import { useColors } from "@/hooks/useColors";
 import type { Transaction } from "@/lib/database/models/Transaction";
 import type { FinancialGoal } from "@/lib/database/models/FinancialGoal";
+
+// Categories available for financial goals
+type Category = 'savings' | 'investment';
 
 const EMPTY_SUMMARY = {
   balance: 0,
