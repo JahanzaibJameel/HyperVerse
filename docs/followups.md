@@ -903,3 +903,14 @@ is at risk.
 
 Verify once someone has access: confirm the required status checks list a context
 that exists, and that a deliberately failing run is actually blocked.
+
+## Finance — custom goal UI not built
+
+app/(tabs)/finance.tsx had customGoal / goalTitle / goalTarget /
+goalCategory state that handleAddGoal read but nothing ever set. Every
+ADD NEW GOAL tap created the hardcoded default ('New Savings Goal', 1000,
+savings); the custom path was unreachable. The dead state, both
+if(customGoal) branches, and the now-unused Category type were removed in
+this commit. To build the feature: a toggle bound to customGoal, two
+TextInputs bound to goalTitle and goalTarget, and a three-chip category
+selector bound to goalCategory, placed above the ADD NEW GOAL button.
