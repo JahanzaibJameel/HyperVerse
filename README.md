@@ -4,7 +4,7 @@ description: Offline-first React Native and Expo life-tracking app. Verified sta
 status: pre-release
 last_verified: 2026-10-05
 audience: all
----
+---   
 
 # HyperVerse
 
